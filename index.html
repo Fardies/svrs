@@ -1,160 +1,44 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SVRS - Smart Visitor Registration System</title>
-
 <style>
-* {
-    box-sizing: border-box;
-}
-
-[hidden] {
-    display: none !important;
-}
-
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f4f7f5;
-    color: #253b32;
-}
-
-.container {
-    width: 92%;
-    max-width: 520px;
-    margin: 35px auto;
-    text-align: center;
-}
-
-header h1 {
-    font-size: 42px;
-    color: #28664a;
-    margin-bottom: 8px;
-}
-
-header p {
-    color: #66776d;
-}
-
-.card {
-    background: white;
-    padding: 25px 20px;
-    margin-top: 25px;
-    border-radius: 16px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.07);
-}
-
-.top-nav {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 25px;
-}
-
-button, .upload-label {
-    display: block;
-    width: 100%;
-    padding: 14px;
-    margin-top: 12px;
-    border: none;
-    border-radius: 10px;
-    background: #28664a;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-button:disabled {
-    opacity: 0.6;
-    cursor: wait;
-}
-
-.secondary, .upload-label {
-    background: #e5eee8;
-    color: #28664a;
-}
-
-.nav-btn {
-    width: auto;
-    margin: 0;
-    padding: 10px 14px;
-    background: #e5eee8;
-    color: #28664a;
-    font-size: 14px;
-}
-
-.back-btn {
-    background: transparent;
-    color: #28664a;
-    text-align: left;
-    padding: 10px 0;
-    margin: 0 0 20px;
-    font-size: 14px;
-}
-
-video, #preview {
-    display: block;
-    width: 100%;
-    max-height: 380px;
-    object-fit: contain;
-    border-radius: 10px;
-    margin: 15px auto;
-    background: #e5eee8;
-}
-
-#message {
-    color: #28664a;
-    margin-top: 20px;
-    overflow-wrap: anywhere;
-    line-height: 1.5;
-}
-
-#ocrResult {
-    margin-top: 20px;
-    padding: 15px;
-    background: #f4f7f5;
-    border-radius: 10px;
-    text-align: left;
-}
-
-#recognizedText {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    font-family: monospace;
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-.empty-state {
-    background: #f4f7f5;
-    padding: 30px 15px;
-    border-radius: 12px;
-    margin-top: 20px;
-}
-
-footer {
-    margin-top: 35px;
-    color: #88978d;
-    font-size: 13px;
-}
-
-@media (max-width: 480px) {
-    .container {
-        margin: 20px auto;
-    }
-
-    .card {
-        padding: 20px 15px;
-    }
-}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; font-family: Arial, sans-serif; background: #f4f7f5; color: #253b32; }
+.container { width: 92%; max-width: 520px; margin: 35px auto; text-align: center; }
+header h1 { font-size: 42px; color: #28664a; margin-bottom: 8px; }
+header p { color: #66776d; }
+.card { background: white; padding: 25px 20px; margin-top: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.07); }
+.top-nav { display: flex; justify-content: flex-end; margin-bottom: 25px; }
+button, .upload-label { display: block; width: 100%; padding: 14px; margin-top: 12px; border: none; border-radius: 10px; background: #28664a; color: white; font-size: 16px; cursor: pointer; font-family: inherit; }
+button:disabled { opacity: 0.6; cursor: wait; }
+.secondary, .upload-label { background: #e5eee8; color: #28664a; }
+.nav-btn { width: auto; margin: 0; padding: 10px 14px; background: #e5eee8; color: #28664a; font-size: 14px; }
+.back-btn { background: transparent; color: #28664a; text-align: left; padding: 10px 0; margin: 0 0 20px; font-size: 14px; }
+video, #preview { display: block; width: 100%; max-height: 380px; object-fit: contain; border-radius: 10px; margin: 15px auto; background: #e5eee8; }
+#message { color: #28664a; margin-top: 20px; overflow-wrap: anywhere; line-height: 1.5; font-weight: bold; }
+#progressBar { width: 100%; height: 8px; margin-top: 12px; border-radius: 8px; overflow: hidden; background: #e5eee8; }
+#progressFill { height: 100%; width: 0; background: #28664a; transition: width 0.2s; }
+.panel { margin-top: 20px; padding: 15px; background: #f4f7f5; border-radius: 10px; text-align: left; }
+.panel label { display: block; margin-top: 12px; font-size: 14px; color: #66776d; }
+input, select { width: 100%; padding: 12px; margin-top: 4px; border: 1px solid #c9d8cf; border-radius: 8px; font-size: 16px; font-family: inherit; background: white; }
+.info { margin: 6px 0; line-height: 1.5; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; }
+.in { background: #d9f0e3; color: #1d6b43; }
+.out { background: #e3e3e3; color: #555; }
+.success { background: #d9f0e3; color: #1d6b43; padding: 15px; border-radius: 10px; font-weight: bold; margin-top: 20px; }
+.record { background: #f4f7f5; border-radius: 10px; padding: 12px; margin-top: 10px; text-align: left; }
+.record h4 { margin: 0 0 6px; }
+.small { font-size: 13px; color: #66776d; }
+#recognizedText { white-space: pre-wrap; overflow-wrap: anywhere; font-family: monospace; font-size: 13px; }
+.empty-state { background: #f4f7f5; padding: 30px 15px; border-radius: 12px; margin-top: 20px; }
+footer { margin-top: 35px; color: #88978d; font-size: 13px; }
 </style>
 </head>
-
 <body>
-
 <main class="container">
 
 <header>
@@ -164,99 +48,103 @@ footer {
 
 <!-- SCANNER PAGE -->
 <section id="scanPage" class="card">
-
     <nav class="top-nav">
-        <button id="goRecordsBtn"
-                class="nav-btn"
-                type="button">
-            View Visitor Records
-        </button>
+        <button id="goRecordsBtn" class="nav-btn" type="button">View Visitor Records</button>
     </nav>
 
     <h2>Visitor IC Scanner</h2>
-    <p>Scan or upload a visitor's IC.</p>
+    <p>Scan or upload the visitor's IC. Text is read automatically.</p>
 
-    <video id="camera"
-           autoplay
-           playsinline
-           muted
-           hidden></video>
-
+    <video id="camera" autoplay playsinline muted hidden></video>
     <canvas id="canvas" hidden></canvas>
+    <img id="preview" alt="Captured or uploaded IC image" hidden>
 
-    <img id="preview"
-         alt="Captured or uploaded IC image"
-         hidden>
+    <button id="scanBtn" type="button">Open Camera</button>
+    <button id="captureBtn" type="button" hidden>Capture IC</button>
+    <button id="stopBtn" class="secondary" type="button" hidden>Close Camera</button>
 
-    <button id="scanBtn" type="button">
-        Open Camera
-    </button>
+    <label for="uploadInput" class="upload-label">Upload IC Image</label>
+    <input id="uploadInput" type="file" accept="image/*" hidden>
 
-    <button id="captureBtn"
-            type="button"
-            hidden>
-        Capture IC
-    </button>
+    <button id="manualBtn" class="secondary" type="button">Enter Details Manually</button>
+    <button id="readTextBtn" class="secondary" type="button" hidden>Read IC Text Again</button>
 
-    <button id="stopBtn"
-            class="secondary"
-            type="button"
-            hidden>
-        Close Camera
-    </button>
-
-    <label for="uploadInput" class="upload-label">
-        Upload IC Image
-    </label>
-
-    <input id="uploadInput"
-           type="file"
-           accept="image/*"
-           hidden>
-
-    <!-- OCR BUTTON -->
-    <button id="readTextBtn"
-            type="button"
-            hidden>
-        Read IC Text
-    </button>
-
-    <!-- OCR RESULTS -->
-    <div id="ocrResult" hidden>
-        <h3>Recognized Text</h3>
-        <pre id="recognizedText"></pre>
-    </div>
-
+    <div id="progressBar" hidden><div id="progressFill"></div></div>
     <p id="message" role="status"></p>
 
+    <!-- STEP 2: CHECK DETAILS -->
+    <div id="ocrResult" class="panel" hidden>
+        <h3>Step 2: Check the details</h3>
+        <label for="nameInput">Full name</label>
+        <input id="nameInput" type="text" autocomplete="off">
+        <label for="icInput">IC number (used only to find the visit, not saved)</label>
+        <input id="icInput" type="text" inputmode="numeric" autocomplete="off">
+        <details>
+            <summary class="small">Show raw recognized text</summary>
+            <pre id="recognizedText"></pre>
+        </details>
+        <button id="continueBtn" type="button">Continue</button>
+    </div>
+
+    <!-- STEP 3A: ACTIVE VISITS FOUND (CHECK-OUT) -->
+    <div id="matchBox" class="panel" hidden>
+        <h3>Step 3: Active visit found</h3>
+        <p class="small">Choose the correct visit. Never check out the wrong person.</p>
+        <div id="matchList"></div>
+        <button id="newVisitBtn" class="secondary" type="button">None of these - new check-in</button>
+    </div>
+
+    <div id="outBox" class="panel" hidden>
+        <h3>Confirm check-out</h3>
+        <div id="outDetails"></div>
+        <button id="confirmOutBtn" type="button">Confirm Check-Out</button>
+    </div>
+
+    <!-- STEP 3B: CHECK-IN FORM -->
+    <div id="inBox" class="panel" hidden>
+        <h3>Step 3: Visit details</h3>
+        <label for="companyInput">Company / Organization</label>
+        <input id="companyInput" type="text" autocomplete="off">
+        <label for="phoneInput">Phone number (optional)</label>
+        <input id="phoneInput" type="tel" autocomplete="off">
+        <label for="purposeInput">Purpose of visit</label>
+        <input id="purposeInput" type="text" autocomplete="off">
+        <label for="hostInput">Person / Department to visit</label>
+        <input id="hostInput" type="text" autocomplete="off">
+        <p class="info"><b>Date:</b> <span id="inDate"></span><br><b>Time:</b> <span id="inTime"></span><br>
+        <b>Status:</b> <span class="badge in">Checked In</span></p>
+        <button id="confirmInBtn" type="button">Confirm Check-In</button>
+    </div>
+
+    <div id="successBox" hidden>
+        <div id="successText" class="success"></div>
+        <button id="nextBtn" type="button">Scan Next Visitor</button>
+    </div>
 </section>
 
 <!-- RECORDS PAGE -->
 <section id="recordsPage" class="card" hidden>
-
-    <button id="backRecordsBtn"
-            class="back-btn"
-            type="button">
-        ← Back to Scanner
-    </button>
-
+    <button id="backRecordsBtn" class="back-btn" type="button">&larr; Back to Scanner</button>
     <h2>Visitor Records</h2>
 
-    <div class="empty-state">
-        <p>No visitor records yet.</p>
-        <small>
-            Visitor registration, history and
-            Excel export will be added later.
-        </small>
+    <input id="searchInput" type="search" placeholder="Search by visitor name">
+    <input id="dateFilter" type="date" aria-label="Filter by date">
+    <select id="statusFilter" aria-label="Filter by status">
+        <option value="">All statuses</option>
+        <option value="in">Still inside (Checked In)</option>
+        <option value="out">Completed (Checked Out)</option>
+    </select>
+    <p id="countInfo" class="small"></p>
+    <div id="recordList"></div>
+    <div id="emptyState" class="empty-state" hidden>
+        <p>No visitor records found.</p>
+        <small>Excel export will be added later.</small>
     </div>
-
 </section>
 
 <footer>SVRS | Internship Project</footer>
-
 </main>
 
-<!-- OCR LIBRARY -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script>
@@ -265,346 +153,472 @@ footer {
 // =====================================
 // 1. HTML ELEMENTS
 // =====================================
-
-const scanPage = document.getElementById("scanPage");
-const recordsPage = document.getElementById("recordsPage");
-
-const goRecordsBtn = document.getElementById("goRecordsBtn");
-const backRecordsBtn = document.getElementById("backRecordsBtn");
-
-const camera = document.getElementById("camera");
-const canvas = document.getElementById("canvas");
-const preview = document.getElementById("preview");
-
-const scanBtn = document.getElementById("scanBtn");
-const captureBtn = document.getElementById("captureBtn");
-const stopBtn = document.getElementById("stopBtn");
-const uploadInput = document.getElementById("uploadInput");
-
-const message = document.getElementById("message");
-
-const readTextBtn = document.getElementById("readTextBtn");
-const ocrResult = document.getElementById("ocrResult");
-const recognizedText = document.getElementById("recognizedText");
+const $ = id => document.getElementById(id);
+const scanPage = $("scanPage"), recordsPage = $("recordsPage");
+const goRecordsBtn = $("goRecordsBtn"), backRecordsBtn = $("backRecordsBtn");
+const camera = $("camera"), canvas = $("canvas"), preview = $("preview");
+const scanBtn = $("scanBtn"), captureBtn = $("captureBtn"), stopBtn = $("stopBtn");
+const uploadInput = $("uploadInput"), manualBtn = $("manualBtn"), readTextBtn = $("readTextBtn");
+const message = $("message"), progressBar = $("progressBar"), progressFill = $("progressFill");
+const ocrResult = $("ocrResult"), recognizedText = $("recognizedText");
+const nameInput = $("nameInput"), icInput = $("icInput"), continueBtn = $("continueBtn");
+const matchBox = $("matchBox"), matchList = $("matchList"), newVisitBtn = $("newVisitBtn");
+const outBox = $("outBox"), outDetails = $("outDetails"), confirmOutBtn = $("confirmOutBtn");
+const inBox = $("inBox"), companyInput = $("companyInput"), phoneInput = $("phoneInput");
+const purposeInput = $("purposeInput"), hostInput = $("hostInput");
+const inDate = $("inDate"), inTime = $("inTime"), confirmInBtn = $("confirmInBtn");
+const successBox = $("successBox"), successText = $("successText"), nextBtn = $("nextBtn");
+const searchInput = $("searchInput"), dateFilter = $("dateFilter"), statusFilter = $("statusFilter");
+const recordList = $("recordList"), countInfo = $("countInfo"), emptyState = $("emptyState");
 
 // =====================================
-// 2. APPLICATION STATE
+// 2. STATE
 // =====================================
-
-let stream = null;
-let imageURL = null;
-let cameraRequest = 0;
-let imageVersion = 0;
-let ocrRunning = false;
+let stream = null, imageURL = null, cameraRequest = 0, imageVersion = 0;
+let ocrRunning = false, worker = null, workerPromise = null;
+let currentHash = "";        // fingerprint of the IC (the IC number itself is NOT saved)
+let currentName = "";
+let selectedVisitId = null;
+let clockTimer = null;
 
 // =====================================
-// 3. OCR RESET
+// 3. VISIT STORAGE
+// Phase 4 uses localStorage (this phone only).
+// Phase 5 will replace these 2 functions with IndexedDB.
 // =====================================
-
-function resetOCR() {
-    imageVersion++;
-
-    readTextBtn.hidden = true;
-    ocrResult.hidden = true;
-    recognizedText.textContent = "";
+function loadVisits() {
+    try { return JSON.parse(localStorage.getItem("svrs_visits")) || []; }
+    catch (e) { return []; }
+}
+function saveVisits(list) {
+    localStorage.setItem("svrs_visits", JSON.stringify(list));
 }
 
 // =====================================
-// 4. CAMERA FUNCTIONS
+// 4. HELPERS
 // =====================================
+function esc(t) {
+    const d = document.createElement("div");
+    d.textContent = t == null ? "" : String(t);
+    return d.innerHTML;
+}
+function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString("en-GB") : "-"; }
+function fmtTime(iso) {
+    return iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "-";
+}
+function localDay(iso) {   // yyyy-mm-dd in local time, for the date filter
+    const d = new Date(iso);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function badge(v) {
+    return v.outAt ? '<span class="badge out">Checked Out</span>' : '<span class="badge in">Checked In</span>';
+}
+function visitSummary(v) {
+    return "<b>" + esc(v.name) + "</b><br>" +
+        "Company: " + esc(v.company || "-") + "<br>" +
+        "Purpose: " + esc(v.purpose || "-") + "<br>" +
+        "Visiting: " + esc(v.host || "-") + "<br>" +
+        "Check-In: " + fmtDate(v.inAt) + " " + fmtTime(v.inAt) + "<br>" +
+        "Check-Out: " + (v.outAt ? fmtDate(v.outAt) + " " + fmtTime(v.outAt) : "Not yet") + "<br>" +
+        "Status: " + badge(v);
+}
 
+// Make a one-way fingerprint of the IC number (so we can match without saving it)
+async function hashIC(ic) {
+    const digits = ic.replace(/\D/g, "");
+    if (digits.length !== 12 || !window.crypto || !crypto.subtle) return "";
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("svrs:" + digits));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// =====================================
+// 5. SCREEN RESET HELPERS
+// =====================================
+function hideSteps() {
+    ocrResult.hidden = true;
+    matchBox.hidden = true;
+    outBox.hidden = true;
+    inBox.hidden = true;
+    successBox.hidden = true;
+    stopClock();
+}
+function resetOCR() {
+    imageVersion++;
+    readTextBtn.hidden = true;
+    progressBar.hidden = true;
+    recognizedText.textContent = "";
+    nameInput.value = "";
+    icInput.value = "";
+    currentHash = "";
+    currentName = "";
+    selectedVisitId = null;
+    hideSteps();
+}
+function startClock() {
+    function tick() {
+        const now = new Date().toISOString();
+        inDate.textContent = fmtDate(now);
+        inTime.textContent = fmtTime(now);
+    }
+    tick();
+    stopClock();
+    clockTimer = setInterval(tick, 15000);
+}
+function stopClock() {
+    if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+}
+
+// =====================================
+// 6. CAMERA
+// =====================================
 function stopCamera() {
     cameraRequest++;
-
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-    }
-
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
     camera.pause();
     camera.srcObject = null;
     camera.hidden = true;
-
     scanBtn.hidden = false;
     captureBtn.hidden = true;
     stopBtn.hidden = true;
 }
-
 function clearPreview() {
     resetOCR();
-
-    if (imageURL) {
-        URL.revokeObjectURL(imageURL);
-        imageURL = null;
-    }
-
+    if (imageURL) { URL.revokeObjectURL(imageURL); imageURL = null; }
     preview.removeAttribute("src");
     preview.hidden = true;
 }
-
 function showPreview(source) {
-    preview.onload = function() {
-        preview.hidden = false;
-        readTextBtn.hidden = false;
-    };
-
-    preview.onerror = function() {
-        message.textContent = "Could not display the image.";
-        readTextBtn.hidden = true;
-    };
-
+    preview.onload = function() { preview.hidden = false; runOCR(); };
+    preview.onerror = function() { message.textContent = "Could not display the image."; };
     preview.src = source;
 }
 
-// =====================================
-// 5. OPEN CAMERA
-// =====================================
-
 scanBtn.addEventListener("click", async function() {
-
     const requestId = ++cameraRequest;
-
     clearPreview();
     message.textContent = "Opening camera...";
-
     try {
-        if (!navigator.mediaDevices?.getUserMedia) {
-            throw new Error(
-                "Camera requires HTTPS or localhost."
-            );
-        }
-
-        const newStream =
-            await navigator.mediaDevices.getUserMedia({
-                audio: false,
-                video: {
-                    facingMode: { ideal: "environment" }
-                }
-            });
-
-        if (requestId !== cameraRequest) {
-            newStream.getTracks().forEach(
-                track => track.stop()
-            );
-            return;
-        }
-
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera requires HTTPS or localhost.");
+        const newStream = await navigator.mediaDevices.getUserMedia({
+            audio: false, video: { facingMode: { ideal: "environment" } }
+        });
+        if (requestId !== cameraRequest) { newStream.getTracks().forEach(t => t.stop()); return; }
         stream = newStream;
         camera.srcObject = stream;
         camera.hidden = false;
-
         await camera.play();
-
         if (requestId !== cameraRequest) return;
-
         scanBtn.hidden = true;
         captureBtn.hidden = false;
         stopBtn.hidden = false;
-
-        message.textContent =
-            "Camera ready. Position the IC inside the frame.";
-
+        message.textContent = "Camera ready. Fill the frame with the IC, then tap Capture IC.";
     } catch (error) {
         if (requestId !== cameraRequest) return;
-
         stopCamera();
-
-        message.textContent =
-            "Camera error: " + error.message;
-
+        message.textContent = "Camera error: " + error.message;
         console.error("Camera error:", error);
     }
 });
 
-// =====================================
-// 6. CAPTURE IMAGE
-// =====================================
-
 captureBtn.addEventListener("click", function() {
-
-    if (!stream || !camera.videoWidth) {
-        message.textContent = "Camera is not ready.";
-        return;
-    }
-
+    if (!stream || !camera.videoWidth) { message.textContent = "Camera is not ready."; return; }
     canvas.width = camera.videoWidth;
     canvas.height = camera.videoHeight;
-
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(camera, 0, 0);
-
+    canvas.getContext("2d").drawImage(camera, 0, 0);
     clearPreview();
-
-    const capturedImage =
-        canvas.toDataURL("image/jpeg", 0.9);
-
-    showPreview(capturedImage);
-
+    showPreview(canvas.toDataURL("image/jpeg", 0.92));
     stopCamera();
-
-    message.textContent =
-        "Image captured! You can now read the text.";
+    message.textContent = "Image captured. Reading text...";
 });
-
-// =====================================
-// 7. CLOSE CAMERA
-// =====================================
 
 stopBtn.addEventListener("click", function() {
     stopCamera();
     message.textContent = "Camera closed.";
 });
 
-// =====================================
-// 8. UPLOAD IMAGE
-// =====================================
-
 uploadInput.addEventListener("change", function() {
-
     const file = uploadInput.files[0];
-
     if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-        message.textContent =
-            "Please select a valid image file.";
-        return;
-    }
-
+    if (!file.type.startsWith("image/")) { message.textContent = "Please select a valid image file."; return; }
     stopCamera();
     clearPreview();
-
     imageURL = URL.createObjectURL(file);
-
     showPreview(imageURL);
-
-    message.textContent =
-        "Image uploaded! You can now read the text.";
-
-    // Allow selecting the same file again
+    message.textContent = "Image uploaded. Reading text...";
     uploadInput.value = "";
 });
 
-// =====================================
-// 9. OCR TEXT RECOGNITION
-// =====================================
-
-readTextBtn.addEventListener("click", async function() {
-
-    if (ocrRunning) return;
-
-    if (preview.hidden || !preview.getAttribute("src")) {
-        message.textContent =
-            "Please capture or upload an image first.";
-        return;
-    }
-
-    if (typeof Tesseract === "undefined") {
-        message.textContent =
-            "OCR library failed to load. Check your internet.";
-        return;
-    }
-
-    ocrRunning = true;
-
-    const currentVersion = imageVersion;
-
-    // Make a separate image copy for this OCR job
-    const sourceImage = preview.src;
-
-    readTextBtn.disabled = true;
-    readTextBtn.textContent = "Reading image...";
-
-    ocrResult.hidden = true;
-    recognizedText.textContent = "";
-
-    message.textContent =
-        "Recognizing text. Please wait...";
-
-    let worker = null;
-
-    try {
-        worker = await Tesseract.createWorker("eng");
-
-        const result = await worker.recognize(sourceImage);
-
-        // Ignore results if the image has changed
-        if (currentVersion !== imageVersion) {
-            return;
-        }
-
-        const text = result.data.text.trim();
-
-        recognizedText.textContent =
-            text || "No readable text detected.";
-
-        ocrResult.hidden = false;
-
-        message.textContent = text
-            ? "Text recognition completed!"
-            : "No text detected. Try a clearer image.";
-
-    } catch (error) {
-        console.error("OCR error:", error);
-
-        if (currentVersion === imageVersion) {
-            message.textContent =
-                "OCR failed: " + error.message;
-        }
-
-    } finally {
-        if (worker) {
-            try {
-                await worker.terminate();
-            } catch (error) {
-                console.error("OCR cleanup error:", error);
-            }
-        }
-
-        ocrRunning = false;
-
-        readTextBtn.disabled = false;
-        readTextBtn.textContent = "Read IC Text";
-    }
-});
-
-// =====================================
-// 10. VISITOR RECORDS NAVIGATION
-// =====================================
-
-goRecordsBtn.addEventListener("click", function() {
-
+// If OCR does not work, the guard can type the name instead
+manualBtn.addEventListener("click", function() {
     stopCamera();
     clearPreview();
-
-    scanPage.hidden = true;
-    recordsPage.hidden = false;
+    ocrResult.hidden = false;
+    message.textContent = "Type the visitor's name (and IC number if you have it), then tap Continue.";
 });
 
-backRecordsBtn.addEventListener("click", function() {
+// =====================================
+// 7. OCR (automatic)
+// =====================================
+function prepareImage(img) {
+    const scale = 1600 / (img.naturalWidth || 1600);
+    const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(img, 0, 0, w, h);
+    const data = ctx.getImageData(0, 0, w, h), px = data.data;
+    for (let i = 0; i < px.length; i += 4) {
+        const grey = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        px[i] = px[i + 1] = px[i + 2] = Math.max(0, Math.min(255, (grey - 128) * 1.5 + 128));
+    }
+    ctx.putImageData(data, 0, 0);
+    return c;
+}
 
-    recordsPage.hidden = true;
-    scanPage.hidden = false;
+function getWorker() {
+    if (!workerPromise) {
+        workerPromise = Tesseract.createWorker("eng", 1, {
+            logger: function(m) {
+                if (m.status === "recognizing text") progressFill.style.width = Math.round(m.progress * 100) + "%";
+            }
+        }).then(w => { worker = w; return w; })
+          .catch(e => { workerPromise = null; throw e; });
+    }
+    return workerPromise;
+}
 
+function extractFields(text) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    let ic = "", icIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+        const m = lines[i].replace(/[Oo]/g, "0").match(/(\d{6})\s*[-–—]?\s*(\d{2})\s*[-–—]?\s*(\d{4})/);
+        if (m) { ic = m[1] + "-" + m[2] + "-" + m[3]; icIndex = i; break; }
+    }
+    const skip = /KAD|PENGENALAN|MALAYSIA|WARGANEGARA|ISLAM|LELAKI|PEREMPUAN|IDENTITY|CARD|MYKAD/i;
+    const nameLines = [];
+    for (let i = icIndex + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (skip.test(line)) continue;
+        const letters = line.replace(/[^A-Za-z]/g, "").length;
+        const nameLike = letters >= 3 && !/\d/.test(line) && !line.includes(",");
+        if (nameLike && line === line.toUpperCase()) nameLines.push(line.replace(/[^A-Za-z@'\/ .]/g, "").trim());
+        else if (nameLines.length) break;
+        if (nameLines.length === 2) break;
+    }
+    return { ic: ic, name: nameLines.join(" ").replace(/\s+/g, " ").trim() };
+}
+
+async function runOCR() {
+    if (ocrRunning) return;
+    if (preview.hidden || !preview.getAttribute("src")) { message.textContent = "Please capture or upload an image first."; return; }
+    if (typeof Tesseract === "undefined") {
+        message.textContent = "OCR library failed to load. Use Enter Details Manually.";
+        readTextBtn.hidden = false;
+        return;
+    }
+    ocrRunning = true;
+    const currentVersion = imageVersion;
+    readTextBtn.hidden = true;
+    hideSteps();
+    progressFill.style.width = "0";
+    progressBar.hidden = false;
+    message.textContent = "Reading the IC. The first time can take up to a minute...";
+    try {
+        const w = await getWorker();
+        const result = await w.recognize(prepareImage(preview));
+        if (currentVersion !== imageVersion) return;
+        const text = (result.data.text || "").trim();
+        recognizedText.textContent = text || "No readable text detected.";
+        const f = extractFields(text);
+        nameInput.value = f.name;
+        icInput.value = f.ic;
+        ocrResult.hidden = false;
+        if (!text) message.textContent = "No text found. Try a clearer photo, or type the name below.";
+        else if (f.name && f.ic) message.textContent = "Done! Check the name and IC number, then tap Continue.";
+        else message.textContent = "Some details were not found. Please type them in, then tap Continue.";
+    } catch (error) {
+        console.error("OCR error:", error);
+        if (currentVersion === imageVersion) message.textContent = "OCR failed: " + error.message + " You can type the details instead.";
+        ocrResult.hidden = false;
+    } finally {
+        ocrRunning = false;
+        progressBar.hidden = true;
+        if (currentVersion === imageVersion) readTextBtn.hidden = false;
+    }
+}
+readTextBtn.addEventListener("click", runOCR);
+
+// =====================================
+// 8. CONTINUE: DECIDE CHECK-IN OR CHECK-OUT
+// =====================================
+continueBtn.addEventListener("click", async function() {
+    const name = nameInput.value.trim();
+    if (!name) { message.textContent = "Please enter the visitor's name."; return; }
+
+    currentName = name;
+    currentHash = await hashIC(icInput.value);
+    icInput.value = "";   // the IC number is not kept after this point
+
+    // Find active visits (not checked out yet)
+    const active = loadVisits().filter(v => !v.outAt);
+    let matches;
+    if (currentHash) {
+        matches = active.filter(v => v.idHash === currentHash);
+    } else {
+        matches = active.filter(v => v.name.toLowerCase() === name.toLowerCase());
+    }
+
+    ocrResult.hidden = true;
+    if (matches.length) showMatches(matches);
+    else showCheckIn();
+});
+
+function showMatches(matches) {
+    matchList.innerHTML = "";
+    matches.forEach(function(v) {
+        const div = document.createElement("div");
+        div.className = "record";
+        div.innerHTML = '<div class="info">' + visitSummary(v) + "</div>";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "This is the right visit";
+        btn.addEventListener("click", function() { showCheckOut(v); });
+        div.appendChild(btn);
+        matchList.appendChild(div);
+    });
+    matchBox.hidden = false;
+    message.textContent = "An active visit was found. Please choose the correct one.";
+}
+
+newVisitBtn.addEventListener("click", function() {
+    matchBox.hidden = true;
+    showCheckIn();
+});
+
+// =====================================
+// 9. CHECK-IN
+// =====================================
+function showCheckIn() {
+    companyInput.value = "";
+    phoneInput.value = "";
+    purposeInput.value = "";
+    hostInput.value = "";
+    startClock();
+    inBox.hidden = false;
+    message.textContent = "No active visit found. Fill in the visit details for " + currentName + ".";
+}
+
+confirmInBtn.addEventListener("click", function() {
+    if (!purposeInput.value.trim() || !hostInput.value.trim()) {
+        message.textContent = "Please enter the purpose of visit and who the visitor is meeting.";
+        return;
+    }
+    const visits = loadVisits();
+    visits.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        name: currentName,
+        company: companyInput.value.trim(),
+        phone: phoneInput.value.trim(),
+        purpose: purposeInput.value.trim(),
+        host: hostInput.value.trim(),
+        idHash: currentHash,
+        inAt: new Date().toISOString(),   // automatic date and time
+        outAt: null
+    });
+    saveVisits(visits);
+    hideSteps();
+    successText.textContent = "Check-in saved for " + currentName + ".";
+    successBox.hidden = false;
     message.textContent = "";
 });
 
 // =====================================
-// 11. CLEANUP
+// 10. CHECK-OUT
 // =====================================
+function showCheckOut(v) {
+    selectedVisitId = v.id;
+    matchBox.hidden = true;
+    outDetails.innerHTML = '<div class="info">' + visitSummary(v) + "</div>";
+    outBox.hidden = false;
+    message.textContent = "Check the details, then tap Confirm Check-Out.";
+}
 
+confirmOutBtn.addEventListener("click", function() {
+    const visits = loadVisits();
+    const v = visits.find(x => x.id === selectedVisitId);
+    if (!v || v.outAt) {
+        message.textContent = "This visit was already checked out.";
+        return;
+    }
+    v.outAt = new Date().toISOString();   // automatic date and time
+    saveVisits(visits);
+    hideSteps();
+    successText.textContent = "Check-out saved for " + v.name + " at " + fmtTime(v.outAt) + ".";
+    successBox.hidden = false;
+    message.textContent = "";
+});
+
+nextBtn.addEventListener("click", function() {
+    stopCamera();
+    clearPreview();
+    message.textContent = "Ready for the next visitor.";
+});
+
+// =====================================
+// 11. VISITOR RECORDS
+// =====================================
+function renderRecords() {
+    const q = searchInput.value.trim().toLowerCase();
+    const day = dateFilter.value;
+    const status = statusFilter.value;
+
+    const list = loadVisits()
+        .filter(v => !q || v.name.toLowerCase().includes(q))
+        .filter(v => !day || localDay(v.inAt) === day)
+        .filter(v => !status || (status === "in" ? !v.outAt : !!v.outAt))
+        .sort((a, b) => b.inAt.localeCompare(a.inAt));
+
+    recordList.innerHTML = "";
+    list.forEach(function(v) {
+        const div = document.createElement("div");
+        div.className = "record";
+        div.innerHTML = '<div class="info">' + visitSummary(v) + "</div>" +
+            (v.phone ? '<div class="small">Phone: ' + esc(v.phone) + "</div>" : "");
+        recordList.appendChild(div);
+    });
+    countInfo.textContent = list.length + " record(s) shown";
+    emptyState.hidden = list.length > 0;
+}
+[searchInput, dateFilter, statusFilter].forEach(el => {
+    el.addEventListener("input", renderRecords);
+    el.addEventListener("change", renderRecords);
+});
+
+goRecordsBtn.addEventListener("click", function() {
+    stopCamera();
+    clearPreview();
+    scanPage.hidden = true;
+    recordsPage.hidden = false;
+    renderRecords();
+});
+backRecordsBtn.addEventListener("click", function() {
+    recordsPage.hidden = true;
+    scanPage.hidden = false;
+    message.textContent = "";
+});
+
+// =====================================
+// 12. CLEANUP AND START
+// =====================================
 window.addEventListener("pagehide", function() {
     stopCamera();
     clearPreview();
+    if (worker) worker.terminate();
 });
 
-// Start on scanner page
 scanPage.hidden = false;
 recordsPage.hidden = true;
-
-console.log("SVRS Phase 3 OCR initialized.");
-
+console.log("SVRS Phase 4 initialized.");
 </script>
-
 </body>
 </html>
