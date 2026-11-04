@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SVRS - Visitor Registration</title>
+<title>SVRS - Smart Visitor Registration System</title>
 
 <style>
 * {
@@ -25,7 +25,7 @@ body {
 .container {
     width: 92%;
     max-width: 520px;
-    margin: 40px auto;
+    margin: 35px auto;
     text-align: center;
 }
 
@@ -42,7 +42,7 @@ header p {
 .card {
     background: white;
     padding: 25px 20px;
-    margin-top: 30px;
+    margin-top: 25px;
     border-radius: 16px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.07);
 }
@@ -65,6 +65,11 @@ button, .upload-label {
     font-size: 16px;
     cursor: pointer;
     font-family: inherit;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: wait;
 }
 
 .secondary, .upload-label {
@@ -104,6 +109,23 @@ video, #preview {
     color: #28664a;
     margin-top: 20px;
     overflow-wrap: anywhere;
+    line-height: 1.5;
+}
+
+#ocrResult {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f4f7f5;
+    border-radius: 10px;
+    text-align: left;
+}
+
+#recognizedText {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.6;
 }
 
 .empty-state {
@@ -132,6 +154,7 @@ footer {
 </head>
 
 <body>
+
 <main class="container">
 
 <header>
@@ -139,7 +162,7 @@ footer {
     <p>Smart Visitor Registration System</p>
 </header>
 
-<!-- MAIN SCANNER PAGE -->
+<!-- SCANNER PAGE -->
 <section id="scanPage" class="card">
 
     <nav class="top-nav">
@@ -162,7 +185,7 @@ footer {
     <canvas id="canvas" hidden></canvas>
 
     <img id="preview"
-         alt="Captured image"
+         alt="Captured or uploaded IC image"
          hidden>
 
     <button id="scanBtn" type="button">
@@ -191,11 +214,24 @@ footer {
            accept="image/*"
            hidden>
 
+    <!-- OCR BUTTON -->
+    <button id="readTextBtn"
+            type="button"
+            hidden>
+        Read IC Text
+    </button>
+
+    <!-- OCR RESULTS -->
+    <div id="ocrResult" hidden>
+        <h3>Recognized Text</h3>
+        <pre id="recognizedText"></pre>
+    </div>
+
     <p id="message" role="status"></p>
 
 </section>
 
-<!-- VISITOR RECORDS PAGE -->
+<!-- RECORDS PAGE -->
 <section id="recordsPage" class="card" hidden>
 
     <button id="backRecordsBtn"
@@ -209,8 +245,8 @@ footer {
     <div class="empty-state">
         <p>No visitor records yet.</p>
         <small>
-            Registration and Excel export
-            will be added in later phases.
+            Visitor registration, history and
+            Excel export will be added later.
         </small>
     </div>
 
@@ -220,12 +256,16 @@ footer {
 
 </main>
 
+<!-- OCR LIBRARY -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script>
 "use strict";
 
-// Get page elements
+// =====================================
+// 1. HTML ELEMENTS
+// =====================================
+
 const scanPage = document.getElementById("scanPage");
 const recordsPage = document.getElementById("recordsPage");
 
@@ -240,13 +280,39 @@ const scanBtn = document.getElementById("scanBtn");
 const captureBtn = document.getElementById("captureBtn");
 const stopBtn = document.getElementById("stopBtn");
 const uploadInput = document.getElementById("uploadInput");
+
 const message = document.getElementById("message");
+
+const readTextBtn = document.getElementById("readTextBtn");
+const ocrResult = document.getElementById("ocrResult");
+const recognizedText = document.getElementById("recognizedText");
+
+// =====================================
+// 2. APPLICATION STATE
+// =====================================
 
 let stream = null;
 let imageURL = null;
 let cameraRequest = 0;
+let imageVersion = 0;
+let ocrRunning = false;
 
-// Stop camera safely
+// =====================================
+// 3. OCR RESET
+// =====================================
+
+function resetOCR() {
+    imageVersion++;
+
+    readTextBtn.hidden = true;
+    ocrResult.hidden = true;
+    recognizedText.textContent = "";
+}
+
+// =====================================
+// 4. CAMERA FUNCTIONS
+// =====================================
+
 function stopCamera() {
     cameraRequest++;
 
@@ -264,8 +330,9 @@ function stopCamera() {
     stopBtn.hidden = true;
 }
 
-// Clear previous image
 function clearPreview() {
+    resetOCR();
+
     if (imageURL) {
         URL.revokeObjectURL(imageURL);
         imageURL = null;
@@ -275,16 +342,33 @@ function clearPreview() {
     preview.hidden = true;
 }
 
-// OPEN CAMERA
+function showPreview(source) {
+    preview.onload = function() {
+        preview.hidden = false;
+        readTextBtn.hidden = false;
+    };
+
+    preview.onerror = function() {
+        message.textContent = "Could not display the image.";
+        readTextBtn.hidden = true;
+    };
+
+    preview.src = source;
+}
+
+// =====================================
+// 5. OPEN CAMERA
+// =====================================
+
 scanBtn.addEventListener("click", async function() {
+
     const requestId = ++cameraRequest;
 
-    message.textContent = "Opening camera...";
     clearPreview();
+    message.textContent = "Opening camera...";
 
     try {
-        if (!navigator.mediaDevices ||
-            !navigator.mediaDevices.getUserMedia) {
+        if (!navigator.mediaDevices?.getUserMedia) {
             throw new Error(
                 "Camera requires HTTPS or localhost."
             );
@@ -298,7 +382,6 @@ scanBtn.addEventListener("click", async function() {
                 }
             });
 
-        // Ignore an outdated request
         if (requestId !== cameraRequest) {
             newStream.getTracks().forEach(
                 track => track.stop()
@@ -318,21 +401,27 @@ scanBtn.addEventListener("click", async function() {
         captureBtn.hidden = false;
         stopBtn.hidden = false;
 
-        message.textContent = "Camera ready!";
+        message.textContent =
+            "Camera ready. Position the IC inside the frame.";
 
     } catch (error) {
         if (requestId !== cameraRequest) return;
 
         stopCamera();
+
         message.textContent =
             "Camera error: " + error.message;
 
-        console.error(error);
+        console.error("Camera error:", error);
     }
 });
 
-// CAPTURE IMAGE
+// =====================================
+// 6. CAPTURE IMAGE
+// =====================================
+
 captureBtn.addEventListener("click", function() {
+
     if (!stream || !camera.videoWidth) {
         message.textContent = "Camera is not ready.";
         return;
@@ -346,30 +435,39 @@ captureBtn.addEventListener("click", function() {
 
     clearPreview();
 
-    preview.src = canvas.toDataURL("image/jpeg", 0.9);
-    preview.hidden = false;
+    const capturedImage =
+        canvas.toDataURL("image/jpeg", 0.9);
+
+    showPreview(capturedImage);
 
     stopCamera();
 
     message.textContent =
-        "Image captured successfully!";
+        "Image captured! You can now read the text.";
 });
 
-// CLOSE CAMERA
+// =====================================
+// 7. CLOSE CAMERA
+// =====================================
+
 stopBtn.addEventListener("click", function() {
     stopCamera();
     message.textContent = "Camera closed.";
 });
 
-// UPLOAD IMAGE
+// =====================================
+// 8. UPLOAD IMAGE
+// =====================================
+
 uploadInput.addEventListener("change", function() {
+
     const file = uploadInput.files[0];
 
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
         message.textContent =
-            "Please select an image file.";
+            "Please select a valid image file.";
         return;
     }
 
@@ -378,15 +476,104 @@ uploadInput.addEventListener("change", function() {
 
     imageURL = URL.createObjectURL(file);
 
-    preview.src = imageURL;
-    preview.hidden = false;
+    showPreview(imageURL);
 
     message.textContent =
-        "Image uploaded successfully!";
+        "Image uploaded! You can now read the text.";
+
+    // Allow selecting the same file again
+    uploadInput.value = "";
 });
 
-// OPEN VISITOR RECORDS
+// =====================================
+// 9. OCR TEXT RECOGNITION
+// =====================================
+
+readTextBtn.addEventListener("click", async function() {
+
+    if (ocrRunning) return;
+
+    if (preview.hidden || !preview.getAttribute("src")) {
+        message.textContent =
+            "Please capture or upload an image first.";
+        return;
+    }
+
+    if (typeof Tesseract === "undefined") {
+        message.textContent =
+            "OCR library failed to load. Check your internet.";
+        return;
+    }
+
+    ocrRunning = true;
+
+    const currentVersion = imageVersion;
+
+    // Make a separate image copy for this OCR job
+    const sourceImage = preview.src;
+
+    readTextBtn.disabled = true;
+    readTextBtn.textContent = "Reading image...";
+
+    ocrResult.hidden = true;
+    recognizedText.textContent = "";
+
+    message.textContent =
+        "Recognizing text. Please wait...";
+
+    let worker = null;
+
+    try {
+        worker = await Tesseract.createWorker("eng");
+
+        const result = await worker.recognize(sourceImage);
+
+        // Ignore results if the image has changed
+        if (currentVersion !== imageVersion) {
+            return;
+        }
+
+        const text = result.data.text.trim();
+
+        recognizedText.textContent =
+            text || "No readable text detected.";
+
+        ocrResult.hidden = false;
+
+        message.textContent = text
+            ? "Text recognition completed!"
+            : "No text detected. Try a clearer image.";
+
+    } catch (error) {
+        console.error("OCR error:", error);
+
+        if (currentVersion === imageVersion) {
+            message.textContent =
+                "OCR failed: " + error.message;
+        }
+
+    } finally {
+        if (worker) {
+            try {
+                await worker.terminate();
+            } catch (error) {
+                console.error("OCR cleanup error:", error);
+            }
+        }
+
+        ocrRunning = false;
+
+        readTextBtn.disabled = false;
+        readTextBtn.textContent = "Read IC Text";
+    }
+});
+
+// =====================================
+// 10. VISITOR RECORDS NAVIGATION
+// =====================================
+
 goRecordsBtn.addEventListener("click", function() {
+
     stopCamera();
     clearPreview();
 
@@ -394,18 +581,29 @@ goRecordsBtn.addEventListener("click", function() {
     recordsPage.hidden = false;
 });
 
-// BACK TO SCANNER
 backRecordsBtn.addEventListener("click", function() {
+
     recordsPage.hidden = true;
     scanPage.hidden = false;
 
     message.textContent = "";
 });
 
-// Release camera when leaving
-window.addEventListener("pagehide", stopCamera);
+// =====================================
+// 11. CLEANUP
+// =====================================
 
-console.log("SVRS ready.");
+window.addEventListener("pagehide", function() {
+    stopCamera();
+    clearPreview();
+});
+
+// Start on scanner page
+scanPage.hidden = false;
+recordsPage.hidden = true;
+
+console.log("SVRS Phase 3 OCR initialized.");
+
 </script>
 
 </body>
