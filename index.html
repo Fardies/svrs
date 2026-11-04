@@ -5,55 +5,134 @@
     <meta charset="UTF-8">
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
-    <title>SVRS - Visitor Registration</title>
+
+    <title>SVRS - Smart Visitor Registration System</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <main class="container">
+
+        <!-- WEBSITE HEADER -->
         <header>
             <h1>SVRS</h1>
             <p>Smart Visitor Registration System</p>
         </header>
 
-        <section class="card">
+        <!-- ============================= -->
+        <!-- MAIN PAGE: IC SCANNER -->
+        <!-- ============================= -->
+
+        <section id="scanPage" class="card">
+
+            <!-- Top Navigation -->
+            <nav class="top-nav">
+                <button id="goRecordsBtn"
+                        class="nav-btn"
+                        type="button">
+                    View Visitor Records
+                </button>
+            </nav>
+
             <h2>Visitor IC Scanner</h2>
             <p>Scan or upload a visitor's IC.</p>
 
-            <video id="camera" autoplay playsinline
-                   muted hidden></video>
+            <!-- Live Camera Preview -->
+            <video
+                id="camera"
+                autoplay
+                playsinline
+                muted
+                hidden>
+            </video>
 
+            <!-- Canvas for Capturing Image -->
             <canvas id="canvas" hidden></canvas>
 
-            <img id="preview" alt="Captured IC"
-                 hidden>
+            <!-- Captured or Uploaded Image Preview -->
+            <img
+                id="preview"
+                alt="Captured or uploaded IC image"
+                hidden>
 
-            <button id="scanBtn">
+            <!-- Open Camera -->
+            <button id="scanBtn" type="button">
                 Open Camera
             </button>
 
-            <button id="captureBtn" hidden>
+            <!-- Capture Image -->
+            <button
+                id="captureBtn"
+                type="button"
+                hidden>
                 Capture IC
             </button>
 
-            <button id="stopBtn" class="secondary" hidden>
+            <!-- Close Camera -->
+            <button
+                id="stopBtn"
+                class="secondary"
+                type="button"
+                hidden>
                 Close Camera
             </button>
 
-            <label for="uploadInput" class="upload-label">
+            <!-- Upload IC Image -->
+            <label
+                for="uploadInput"
+                class="upload-label">
                 Upload IC Image
             </label>
 
-            <input type="file" id="uploadInput"
-                   accept="image/*" hidden>
+            <input
+                type="file"
+                id="uploadInput"
+                accept="image/*"
+                hidden>
 
+            <!-- Camera and Upload Messages -->
             <p id="message" role="status"></p>
+
         </section>
 
+        <!-- ============================= -->
+        <!-- VISITOR RECORDS PAGE -->
+        <!-- ============================= -->
+
+        <section id="recordsPage" class="card" hidden>
+
+            <!-- Back to Scanner -->
+            <button
+                id="backRecordsBtn"
+                class="back-btn"
+                type="button">
+                ← Back to Scanner
+            </button>
+
+            <h2>Visitor Records</h2>
+            <p>View registered visitors here.</p>
+
+            <!-- Empty Records Placeholder -->
+            <div class="empty-state">
+                <p>No visitor records yet.</p>
+                <small>
+                    Visitor registration and history
+                    will be added in Phase 4.
+                </small>
+            </div>
+
+        </section>
+
+        <!-- WEBSITE FOOTER -->
         <footer>
             <p>SVRS | Internship Project</p>
         </footer>
+
     </main>
 
+    <!-- JavaScript -->
     <script src="script.js"></script>
+
 </body>
 </html>

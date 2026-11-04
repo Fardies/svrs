@@ -83,3 +83,61 @@ footer {
     color: #88978d;
     font-size: 13px;
 }
+
+/* Navigation buttons */
+.back-btn {
+    background: transparent;
+    color: #28664a;
+    text-align: left;
+    padding: 10px 0;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+/* Empty visitor records */
+.empty-state {
+    background: #f4f7f5;
+    padding: 35px 15px;
+    border-radius: 12px;
+    margin-top: 20px;
+    color: #66776d;
+}
+
+.empty-state p {
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.empty-state small {
+    line-height: 1.6;
+}
+
+
+/* Top navigation */
+.top-nav {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 25px;
+}
+
+.nav-btn {
+    width: auto;
+    margin: 0;
+    padding: 10px 14px;
+    background: #e5eee8;
+    color: #28664a;
+    font-size: 14px;
+    border-radius: 8px;
+}
+
+/* Keep navigation comfortable on phones */
+@media (max-width: 480px) {
+    .top-nav {
+        margin-bottom: 20px;
+    }
+
+    .nav-btn {
+        font-size: 13px;
+        padding: 10px 12px;
+    }
+}
