@@ -1,0 +1,59 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+    <title>SVRS - Visitor Registration</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>SVRS</h1>
+            <p>Smart Visitor Registration System</p>
+        </header>
+
+        <section class="card">
+            <h2>Visitor IC Scanner</h2>
+            <p>Scan or upload a visitor's IC.</p>
+
+            <video id="camera" autoplay playsinline
+                   muted hidden></video>
+
+            <canvas id="canvas" hidden></canvas>
+
+            <img id="preview" alt="Captured IC"
+                 hidden>
+
+            <button id="scanBtn">
+                Open Camera
+            </button>
+
+            <button id="captureBtn" hidden>
+                Capture IC
+            </button>
+
+            <button id="stopBtn" class="secondary" hidden>
+                Close Camera
+            </button>
+
+            <label for="uploadInput" class="upload-label">
+                Upload IC Image
+            </label>
+
+            <input type="file" id="uploadInput"
+                   accept="image/*" hidden>
+
+            <p id="message" role="status"></p>
+        </section>
+
+        <footer>
+            <p>SVRS | Internship Project</p>
+        </footer>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
