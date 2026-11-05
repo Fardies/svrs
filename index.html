@@ -19,6 +19,10 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .nav-btn { width: auto; margin: 0; padding: 10px 14px; background: #e5eee8; color: #28664a; font-size: 14px; }
 .back-btn { background: transparent; color: #28664a; text-align: left; padding: 10px 0; margin: 0 0 20px; font-size: 14px; }
 video, #preview { display: block; width: 100%; max-height: 380px; object-fit: contain; border-radius: 10px; margin: 15px auto; background: #e5eee8; }
+.camwrap { position: relative; margin: 15px auto; border-radius: 10px; overflow: hidden; background: #000; }
+.camwrap video { margin: 0; max-height: 70vh; border-radius: 0; background: #000; }
+#frameGuide { position: absolute; border: 3px solid #fff; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); pointer-events: none; }
+.camHint { position: absolute; left: 0; right: 0; bottom: 8px; color: #fff; font-size: 13px; text-shadow: 0 1px 3px #000; pointer-events: none; }
 #message { color: #28664a; margin-top: 20px; overflow-wrap: anywhere; line-height: 1.5; font-weight: bold; }
 #progressBar { width: 100%; height: 8px; margin-top: 12px; border-radius: 8px; overflow: hidden; background: #e5eee8; }
 #progressFill { height: 100%; width: 0; background: #28664a; transition: width 0.2s; }
@@ -69,7 +73,11 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
     <h2>Visitor IC Scanner</h2>
     <p>Scan or upload the visitor's IC. Text is read automatically.</p>
 
-    <video id="camera" autoplay playsinline muted hidden></video>
+    <div id="camWrap" class="camwrap" hidden>
+        <video id="camera" autoplay playsinline muted></video>
+        <div id="frameGuide"></div>
+        <div class="camHint">Fit the whole IC inside the frame. Hold steady, avoid glare.</div>
+    </div>
     <canvas id="canvas" hidden></canvas>
     <img id="preview" alt="Captured or uploaded IC image" hidden>
 
@@ -175,6 +183,7 @@ const $ = id => document.getElementById(id);
 const scanPage = $("scanPage"), recordsPage = $("recordsPage");
 const goRecordsBtn = $("goRecordsBtn"), backRecordsBtn = $("backRecordsBtn");
 const camera = $("camera"), canvas = $("canvas"), preview = $("preview");
+const camWrap = $("camWrap"), frameGuide = $("frameGuide");
 const scanBtn = $("scanBtn"), captureBtn = $("captureBtn"), stopBtn = $("stopBtn");
 const uploadInput = $("uploadInput"), manualBtn = $("manualBtn"), readTextBtn = $("readTextBtn");
 const message = $("message"), progressBar = $("progressBar"), progressFill = $("progressFill");
@@ -343,11 +352,39 @@ function stopCamera() {
     if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
     camera.pause();
     camera.srcObject = null;
-    camera.hidden = true;
+    camWrap.hidden = true;
     scanBtn.hidden = false;
     captureBtn.hidden = true;
     stopBtn.hidden = true;
 }
+// Frame guide: a card-shaped box (85.6 x 54 mm = 1.586) centred on the real video picture
+function getFrameRect() {
+    const cw = camera.clientWidth, ch = camera.clientHeight;
+    const vw = camera.videoWidth, vh = camera.videoHeight;
+    if (!vw || !vh || !cw || !ch) return null;
+    const s = Math.min(cw / vw, ch / vh);           // video is shown with object-fit: contain
+    const dw = vw * s, dh = vh * s;
+    const ox = (cw - dw) / 2, oy = (ch - dh) / 2;
+    let fw = dw * 0.92, fh = fw / 1.586;
+    if (fh > dh * 0.92) { fh = dh * 0.92; fw = fh * 1.586; }
+    const fx = ox + (dw - fw) / 2, fy = oy + (dh - fh) / 2;
+    return {
+        css: { x: fx, y: fy, w: fw, h: fh },
+        src: { x: (fx - ox) / s, y: (fy - oy) / s, w: fw / s, h: fh / s }   // in real video pixels
+    };
+}
+function positionFrame() {
+    const r = getFrameRect();
+    if (!r) return;
+    frameGuide.style.left = r.css.x + "px";
+    frameGuide.style.top = r.css.y + "px";
+    frameGuide.style.width = r.css.w + "px";
+    frameGuide.style.height = r.css.h + "px";
+}
+camera.addEventListener("loadedmetadata", positionFrame);
+camera.addEventListener("playing", positionFrame);
+window.addEventListener("resize", positionFrame);
+
 function clearPreview() {
     resetOCR();
     if (imageURL) { URL.revokeObjectURL(imageURL); imageURL = null; }
@@ -367,12 +404,12 @@ scanBtn.addEventListener("click", async function() {
     try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera requires HTTPS or localhost.");
         const newStream = await navigator.mediaDevices.getUserMedia({
-            audio: false, video: { facingMode: { ideal: "environment" } }
+            audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
         });
         if (requestId !== cameraRequest) { newStream.getTracks().forEach(t => t.stop()); return; }
         stream = newStream;
         camera.srcObject = stream;
-        camera.hidden = false;
+        camWrap.hidden = false;
         await camera.play();
         if (requestId !== cameraRequest) return;
         scanBtn.hidden = true;
@@ -389,9 +426,12 @@ scanBtn.addEventListener("click", async function() {
 
 captureBtn.addEventListener("click", function() {
     if (!stream || !camera.videoWidth) { message.textContent = "Camera is not ready."; return; }
-    canvas.width = camera.videoWidth;
-    canvas.height = camera.videoHeight;
-    canvas.getContext("2d").drawImage(camera, 0, 0);
+    // Keep only the part inside the frame (the IC), so the text is bigger and clearer
+    const r = getFrameRect();
+    const c = r ? r.src : { x: 0, y: 0, w: camera.videoWidth, h: camera.videoHeight };
+    canvas.width = Math.round(c.w);
+    canvas.height = Math.round(c.h);
+    canvas.getContext("2d").drawImage(camera, c.x, c.y, c.w, c.h, 0, 0, canvas.width, canvas.height);
     clearPreview();
     showPreview(canvas.toDataURL("image/jpeg", 0.92));
     stopCamera();
@@ -428,16 +468,29 @@ manualBtn.addEventListener("click", function() {
 // 7. OCR (automatic)
 // =====================================
 function prepareImage(img) {
-    const scale = 1600 / (img.naturalWidth || 1600);
+    // Resize to about 1800px wide, make grey, then stretch the contrast automatically
+    const scale = 1800 / (img.naturalWidth || 1800);
     const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
     const c = document.createElement("canvas");
     c.width = w; c.height = h;
     const ctx = c.getContext("2d");
     ctx.drawImage(img, 0, 0, w, h);
     const data = ctx.getImageData(0, 0, w, h), px = data.data;
-    for (let i = 0; i < px.length; i += 4) {
-        const grey = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-        px[i] = px[i + 1] = px[i + 2] = Math.max(0, Math.min(255, (grey - 128) * 1.5 + 128));
+    const grey = new Uint8ClampedArray(w * h), hist = new Array(256).fill(0);
+    for (let i = 0, j = 0; i < px.length; i += 4, j++) {
+        const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        grey[j] = g;
+        hist[grey[j]]++;
+    }
+    const total = grey.length;
+    let lo = 0, hi = 255, sum = 0;
+    for (let v = 0; v < 256; v++) { sum += hist[v]; if (sum >= total * 0.02) { lo = v; break; } }
+    sum = 0;
+    for (let v = 255; v >= 0; v--) { sum += hist[v]; if (sum >= total * 0.02) { hi = v; break; } }
+    if (hi - lo < 30) { lo = 0; hi = 255; }
+    for (let i = 0, j = 0; i < px.length; i += 4, j++) {
+        const v = Math.max(0, Math.min(255, (grey[j] - lo) * 255 / (hi - lo)));
+        px[i] = px[i + 1] = px[i + 2] = v;
     }
     ctx.putImageData(data, 0, 0);
     return c;
@@ -493,10 +546,22 @@ async function runOCR() {
     message.textContent = "Reading the IC. The first time can take up to a minute...";
     try {
         const w = await getWorker();
-        const result = await w.recognize(prepareImage(preview));
+        const cleaned = prepareImage(preview);
+        await w.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.AUTO, tessedit_char_whitelist: "" });
+        const result = await w.recognize(cleaned);
         if (currentVersion !== imageVersion) return;
         const text = (result.data.text || "").trim();
         const f = extractFields(text);
+        if (!f.ic) {
+            // Second pass: look for digits only (more accurate for the IC number)
+            progressFill.style.width = "0";
+            message.textContent = "Checking the IC number again...";
+            await w.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT, tessedit_char_whitelist: "0123456789-" });
+            const result2 = await w.recognize(cleaned);
+            await w.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.AUTO, tessedit_char_whitelist: "" });
+            if (currentVersion !== imageVersion) return;
+            f.ic = extractFields(result2.data.text || "").ic;
+        }
         currentHash = await makeToken(f.ic);     // token only; the IC number is dropped now
         if (currentVersion !== imageVersion) return;
         nameInput.value = f.name;
