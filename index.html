@@ -85,6 +85,9 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
     <button id="captureBtn" type="button" hidden>Capture IC</button>
     <button id="stopBtn" class="secondary" type="button" hidden>Close Camera</button>
 
+    <label for="photoInput" class="upload-label">Take Photo with Phone Camera (sharper)</label>
+    <input id="photoInput" type="file" accept="image/*" capture="environment" hidden>
+
     <label for="uploadInput" class="upload-label">Upload IC Image</label>
     <input id="uploadInput" type="file" accept="image/*" hidden>
 
@@ -185,7 +188,7 @@ const goRecordsBtn = $("goRecordsBtn"), backRecordsBtn = $("backRecordsBtn");
 const camera = $("camera"), canvas = $("canvas"), preview = $("preview");
 const camWrap = $("camWrap"), frameGuide = $("frameGuide");
 const scanBtn = $("scanBtn"), captureBtn = $("captureBtn"), stopBtn = $("stopBtn");
-const uploadInput = $("uploadInput"), manualBtn = $("manualBtn"), readTextBtn = $("readTextBtn");
+const uploadInput = $("uploadInput"), photoInput = $("photoInput"), manualBtn = $("manualBtn"), readTextBtn = $("readTextBtn");
 const message = $("message"), progressBar = $("progressBar"), progressFill = $("progressFill");
 const ocrResult = $("ocrResult"), icInfo = $("icInfo");
 const nameInput = $("nameInput"), continueBtn = $("continueBtn");
@@ -404,7 +407,7 @@ scanBtn.addEventListener("click", async function() {
     try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera requires HTTPS or localhost.");
         const newStream = await navigator.mediaDevices.getUserMedia({
-            audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+            audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: "continuous" }] }
         });
         if (requestId !== cameraRequest) { newStream.getTracks().forEach(t => t.stop()); return; }
         stream = newStream;
@@ -443,16 +446,19 @@ stopBtn.addEventListener("click", function() {
     message.textContent = "Camera closed.";
 });
 
-uploadInput.addEventListener("change", function() {
-    const file = uploadInput.files[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { message.textContent = "Please select a valid image file."; return; }
-    stopCamera();
-    clearPreview();
-    imageURL = URL.createObjectURL(file);
-    showPreview(imageURL);
-    message.textContent = "Image uploaded. Reading text...";
-    uploadInput.value = "";
+// Both "Upload IC Image" and "Take Photo with Phone Camera" use this
+[uploadInput, photoInput].forEach(function(input) {
+    input.addEventListener("change", function() {
+        const file = input.files[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) { message.textContent = "Please select a valid image file."; return; }
+        stopCamera();
+        clearPreview();
+        imageURL = URL.createObjectURL(file);
+        showPreview(imageURL);
+        message.textContent = "Photo received. Reading text...";
+        input.value = "";
+    });
 });
 
 // If OCR does not work, the guard can type the name instead
@@ -468,8 +474,9 @@ manualBtn.addEventListener("click", function() {
 // 7. OCR (automatic)
 // =====================================
 function prepareImage(img) {
-    // Resize to about 1800px wide, make grey, then stretch the contrast automatically
-    const scale = 1800 / (img.naturalWidth || 1800);
+    // Resize to 1800-2400px wide, make grey, then stretch the contrast automatically
+    const target = img.naturalWidth > 2400 ? 2400 : Math.max(img.naturalWidth || 1800, 1800);
+    const scale = target / (img.naturalWidth || 1800);
     const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
     const c = document.createElement("canvas");
     c.width = w; c.height = h;
