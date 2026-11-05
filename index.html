@@ -73,19 +73,10 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
     <h2>Visitor IC Scanner</h2>
     <p>Scan or upload the visitor's IC. Text is read automatically.</p>
 
-    <div id="camWrap" class="camwrap" hidden>
-        <video id="camera" autoplay playsinline muted></video>
-        <div id="frameGuide"></div>
-        <div class="camHint">Fit the whole IC inside the frame. Hold steady, avoid glare.</div>
-    </div>
-    <canvas id="canvas" hidden></canvas>
     <img id="preview" alt="Captured or uploaded IC image" hidden>
 
     <button id="scanBtn" type="button">Open Camera</button>
-    <button id="captureBtn" type="button" hidden>Capture IC</button>
-    <button id="stopBtn" class="secondary" type="button" hidden>Close Camera</button>
 
-    <label for="photoInput" class="upload-label">Take Photo with Phone Camera (sharper)</label>
     <input id="photoInput" type="file" accept="image/*" capture="environment" hidden>
 
     <label for="uploadInput" class="upload-label">Upload IC Image</label>
@@ -170,7 +161,7 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
     </div>
 </section>
 
-<footer>SVRS | Internship Project<br><span id="keyCode"></span></footer>
+<footer>SVRS | Internship Project<br><span id="keyCode"></span><br>Version: native-photo-1</footer>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -185,9 +176,8 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
 const $ = id => document.getElementById(id);
 const scanPage = $("scanPage"), recordsPage = $("recordsPage");
 const goRecordsBtn = $("goRecordsBtn"), backRecordsBtn = $("backRecordsBtn");
-const camera = $("camera"), canvas = $("canvas"), preview = $("preview");
-const camWrap = $("camWrap"), frameGuide = $("frameGuide");
-const scanBtn = $("scanBtn"), captureBtn = $("captureBtn"), stopBtn = $("stopBtn");
+const preview = $("preview");
+const scanBtn = $("scanBtn");
 const uploadInput = $("uploadInput"), photoInput = $("photoInput"), manualBtn = $("manualBtn"), readTextBtn = $("readTextBtn");
 const message = $("message"), progressBar = $("progressBar"), progressFill = $("progressFill");
 const ocrResult = $("ocrResult"), icInfo = $("icInfo");
@@ -207,7 +197,7 @@ const todayBtn = $("todayBtn"), recordList = $("recordList"), countInfo = $("cou
 // =====================================
 // 2. STATE
 // =====================================
-let stream = null, imageURL = null, cameraRequest = 0, imageVersion = 0;
+let imageURL = null, imageVersion = 0;
 let ocrRunning = false, worker = null, workerPromise = null;
 let currentHash = "";        // secret-key token made from the IC (the IC number itself is NOT kept)
 let hmacKey = null;          // secret key made from the shared passphrase
@@ -348,46 +338,8 @@ function stopClock() {
 }
 
 // =====================================
-// 6. CAMERA
+// 6. PHOTO (the phone's own camera app, sharper than a web camera)
 // =====================================
-function stopCamera() {
-    cameraRequest++;
-    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-    camera.pause();
-    camera.srcObject = null;
-    camWrap.hidden = true;
-    scanBtn.hidden = false;
-    captureBtn.hidden = true;
-    stopBtn.hidden = true;
-}
-// Frame guide: a card-shaped box (85.6 x 54 mm = 1.586) centred on the real video picture
-function getFrameRect() {
-    const cw = camera.clientWidth, ch = camera.clientHeight;
-    const vw = camera.videoWidth, vh = camera.videoHeight;
-    if (!vw || !vh || !cw || !ch) return null;
-    const s = Math.min(cw / vw, ch / vh);           // video is shown with object-fit: contain
-    const dw = vw * s, dh = vh * s;
-    const ox = (cw - dw) / 2, oy = (ch - dh) / 2;
-    let fw = dw * 0.92, fh = fw / 1.586;
-    if (fh > dh * 0.92) { fh = dh * 0.92; fw = fh * 1.586; }
-    const fx = ox + (dw - fw) / 2, fy = oy + (dh - fh) / 2;
-    return {
-        css: { x: fx, y: fy, w: fw, h: fh },
-        src: { x: (fx - ox) / s, y: (fy - oy) / s, w: fw / s, h: fh / s }   // in real video pixels
-    };
-}
-function positionFrame() {
-    const r = getFrameRect();
-    if (!r) return;
-    frameGuide.style.left = r.css.x + "px";
-    frameGuide.style.top = r.css.y + "px";
-    frameGuide.style.width = r.css.w + "px";
-    frameGuide.style.height = r.css.h + "px";
-}
-camera.addEventListener("loadedmetadata", positionFrame);
-camera.addEventListener("playing", positionFrame);
-window.addEventListener("resize", positionFrame);
-
 function clearPreview() {
     resetOCR();
     if (imageURL) { URL.revokeObjectURL(imageURL); imageURL = null; }
@@ -400,59 +352,18 @@ function showPreview(source) {
     preview.src = source;
 }
 
-scanBtn.addEventListener("click", async function() {
-    const requestId = ++cameraRequest;
-    clearPreview();
-    message.textContent = "Opening camera...";
-    try {
-        if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera requires HTTPS or localhost.");
-        const newStream = await navigator.mediaDevices.getUserMedia({
-            audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: "continuous" }] }
-        });
-        if (requestId !== cameraRequest) { newStream.getTracks().forEach(t => t.stop()); return; }
-        stream = newStream;
-        camera.srcObject = stream;
-        camWrap.hidden = false;
-        await camera.play();
-        if (requestId !== cameraRequest) return;
-        scanBtn.hidden = true;
-        captureBtn.hidden = false;
-        stopBtn.hidden = false;
-        message.textContent = "Camera ready. Fill the frame with the IC, then tap Capture IC.";
-    } catch (error) {
-        if (requestId !== cameraRequest) return;
-        stopCamera();
-        message.textContent = "Camera error: " + error.message;
-        console.error("Camera error:", error);
-    }
+// "Open Camera" opens the phone's real camera app
+scanBtn.addEventListener("click", function() {
+    message.textContent = "Take a clear photo of the IC: about 20-30 cm away, tap to focus, avoid glare.";
+    photoInput.click();
 });
 
-captureBtn.addEventListener("click", function() {
-    if (!stream || !camera.videoWidth) { message.textContent = "Camera is not ready."; return; }
-    // Keep only the part inside the frame (the IC), so the text is bigger and clearer
-    const r = getFrameRect();
-    const c = r ? r.src : { x: 0, y: 0, w: camera.videoWidth, h: camera.videoHeight };
-    canvas.width = Math.round(c.w);
-    canvas.height = Math.round(c.h);
-    canvas.getContext("2d").drawImage(camera, c.x, c.y, c.w, c.h, 0, 0, canvas.width, canvas.height);
-    clearPreview();
-    showPreview(canvas.toDataURL("image/jpeg", 0.92));
-    stopCamera();
-    message.textContent = "Image captured. Reading text...";
-});
-
-stopBtn.addEventListener("click", function() {
-    stopCamera();
-    message.textContent = "Camera closed.";
-});
-
-// Both "Upload IC Image" and "Take Photo with Phone Camera" use this
+// Both "Open Camera" (photo) and "Upload IC Image" use this
 [uploadInput, photoInput].forEach(function(input) {
     input.addEventListener("change", function() {
         const file = input.files[0];
         if (!file) return;
         if (!file.type.startsWith("image/")) { message.textContent = "Please select a valid image file."; return; }
-        stopCamera();
         clearPreview();
         imageURL = URL.createObjectURL(file);
         showPreview(imageURL);
@@ -463,7 +374,6 @@ stopBtn.addEventListener("click", function() {
 
 // If OCR does not work, the guard can type the name instead
 manualBtn.addEventListener("click", function() {
-    stopCamera();
     clearPreview();
     ocrResult.hidden = false;
     icInfo.textContent = "No IC read. The visit will be matched by name.";
@@ -695,7 +605,6 @@ confirmOutBtn.addEventListener("click", function() {
 });
 
 nextBtn.addEventListener("click", function() {
-    stopCamera();
     clearPreview();
     message.textContent = "Ready for the next visitor.";
 });
@@ -740,7 +649,6 @@ function renderRecords() {
 });
 
 goRecordsBtn.addEventListener("click", function() {
-    stopCamera();
     clearPreview();
     scanPage.hidden = true;
     recordsPage.hidden = false;
@@ -803,7 +711,6 @@ exportBtn.addEventListener("click", function() {
 // 12. CLEANUP AND START
 // =====================================
 window.addEventListener("pagehide", function() {
-    stopCamera();
     clearPreview();
     if (worker) worker.terminate();
 });
