@@ -46,8 +46,22 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
     <p>Smart Visitor Registration System</p>
 </header>
 
+<!-- FIRST-TIME SETUP (secret passphrase) -->
+<section id="setupPage" class="card" hidden>
+    <h2>First-time setup</h2>
+    <p class="small">Enter the shared secret passphrase. Use the SAME passphrase on every guard's phone. It is never saved in the code or on GitHub.</p>
+    <div class="panel">
+        <label for="passInput">Passphrase (at least 12 characters)</label>
+        <input id="passInput" type="password" autocomplete="off">
+        <label for="passConfirm">Type it again</label>
+        <input id="passConfirm" type="password" autocomplete="off">
+        <button id="saveKeyBtn" type="button">Save and Start</button>
+        <p id="setupMsg" class="small"></p>
+    </div>
+</section>
+
 <!-- SCANNER PAGE -->
-<section id="scanPage" class="card">
+<section id="scanPage" class="card" hidden>
     <nav class="top-nav">
         <button id="goRecordsBtn" class="nav-btn" type="button">View Visitor Records</button>
     </nav>
@@ -77,12 +91,7 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
         <h3>Step 2: Check the details</h3>
         <label for="nameInput">Full name</label>
         <input id="nameInput" type="text" autocomplete="off">
-        <label for="icInput">IC number (only used to find the visit. It is never saved.)</label>
-        <input id="icInput" type="text" inputmode="numeric" autocomplete="off">
-        <details>
-            <summary class="small">Show raw recognized text</summary>
-            <pre id="recognizedText"></pre>
-        </details>
+        <p id="icInfo" class="info small"></p>
         <button id="continueBtn" type="button">Continue</button>
     </div>
 
@@ -123,25 +132,38 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
     <button id="backRecordsBtn" class="back-btn" type="button">&larr; Back to Scanner</button>
     <h2>Visitor Records</h2>
 
+    <div class="panel">
+        <h3>Export to Excel</h3>
+        <label for="exportFrom">From date (leave both empty to export everything)</label>
+        <input id="exportFrom" type="date">
+        <label for="exportTo">To date</label>
+        <input id="exportTo" type="date">
+        <button id="exportBtn" type="button">Export to Excel</button>
+        <p id="exportMsg" class="small"></p>
+    </div>
+
+    <h3>Visitor list</h3>
     <input id="searchInput" type="search" placeholder="Search by name, car number or purpose">
-    <input id="dateFilter" type="date" aria-label="Filter by date">
+    <input id="dateFilter" type="date" aria-label="Choose date">
+    <button id="todayBtn" class="secondary" type="button">Show Today</button>
     <select id="statusFilter" aria-label="Filter by status">
         <option value="">All statuses</option>
-        <option value="in">Still inside (Checked In)</option>
+        <option value="in">Still inside (any date)</option>
         <option value="out">Completed (Checked Out)</option>
     </select>
     <p id="countInfo" class="small"></p>
     <div id="recordList"></div>
     <div id="emptyState" class="empty-state" hidden>
-        <p>No visitor records found.</p>
+        <p>No visitors found.</p>
         <small>Excel export will be added later.</small>
     </div>
 </section>
 
-<footer>SVRS | Internship Project</footer>
+<footer>SVRS | Internship Project<br><span id="keyCode"></span></footer>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
 "use strict";
@@ -156,8 +178,10 @@ const camera = $("camera"), canvas = $("canvas"), preview = $("preview");
 const scanBtn = $("scanBtn"), captureBtn = $("captureBtn"), stopBtn = $("stopBtn");
 const uploadInput = $("uploadInput"), manualBtn = $("manualBtn"), readTextBtn = $("readTextBtn");
 const message = $("message"), progressBar = $("progressBar"), progressFill = $("progressFill");
-const ocrResult = $("ocrResult"), recognizedText = $("recognizedText");
-const nameInput = $("nameInput"), icInput = $("icInput"), continueBtn = $("continueBtn");
+const ocrResult = $("ocrResult"), icInfo = $("icInfo");
+const nameInput = $("nameInput"), continueBtn = $("continueBtn");
+const setupPage = $("setupPage"), passInput = $("passInput"), passConfirm = $("passConfirm");
+const saveKeyBtn = $("saveKeyBtn"), setupMsg = $("setupMsg"), keyCode = $("keyCode");
 const matchBox = $("matchBox"), matchList = $("matchList"), newVisitBtn = $("newVisitBtn");
 const outBox = $("outBox"), outDetails = $("outDetails"), confirmOutBtn = $("confirmOutBtn");
 const inBox = $("inBox"), carInput = $("carInput");
@@ -165,14 +189,16 @@ const purposeInput = $("purposeInput");
 const inDate = $("inDate"), inTime = $("inTime"), confirmInBtn = $("confirmInBtn");
 const successBox = $("successBox"), successText = $("successText"), nextBtn = $("nextBtn");
 const searchInput = $("searchInput"), dateFilter = $("dateFilter"), statusFilter = $("statusFilter");
-const recordList = $("recordList"), countInfo = $("countInfo"), emptyState = $("emptyState");
+const exportFrom = $("exportFrom"), exportTo = $("exportTo"), exportBtn = $("exportBtn"), exportMsg = $("exportMsg");
+const todayBtn = $("todayBtn"), recordList = $("recordList"), countInfo = $("countInfo"), emptyState = $("emptyState");
 
 // =====================================
 // 2. STATE
 // =====================================
 let stream = null, imageURL = null, cameraRequest = 0, imageVersion = 0;
 let ocrRunning = false, worker = null, workerPromise = null;
-let currentHash = "";        // fingerprint of the IC (the IC number itself is NOT saved)
+let currentHash = "";        // secret-key token made from the IC (the IC number itself is NOT kept)
+let hmacKey = null;          // secret key made from the shared passphrase
 let currentName = "";
 let selectedVisitId = null;
 let clockTimer = null;
@@ -218,12 +244,59 @@ function visitSummary(v) {
         "Status: " + badge(v);
 }
 
-// Make a one-way fingerprint of the IC number (so we can match without saving it)
-async function hashIC(ic) {
-    const digits = ic.replace(/\D/g, "");
-    if (digits.length !== 12 || !window.crypto || !crypto.subtle) return "";
-    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("svrs:" + digits));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+// =====================================
+// 4B. SECRET KEY AND MATCHING TOKEN
+// The IC number is turned into a token with a secret key (HMAC-SHA256).
+// Only the token is saved. The key lives in this phone's IndexedDB
+// (it cannot be copied out), never in the code.
+// =====================================
+const enc = t => new TextEncoder().encode(t);
+const toHex = buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+function openKeyDB() {
+    return new Promise(function(resolve, reject) {
+        const r = indexedDB.open("svrs-keys", 1);
+        r.onupgradeneeded = function() { r.result.createObjectStore("keys"); };
+        r.onsuccess = function() { resolve(r.result); };
+        r.onerror = function() { reject(r.error); };
+    });
+}
+async function loadKey() {
+    try {
+        const db = await openKeyDB();
+        return await new Promise(function(resolve) {
+            const q = db.transaction("keys").objectStore("keys").get("hmac");
+            q.onsuccess = function() { resolve(q.result || null); };
+            q.onerror = function() { resolve(null); };
+        });
+    } catch (e) { return null; }
+}
+async function storeKey(key) {
+    const db = await openKeyDB();
+    return new Promise(function(resolve, reject) {
+        const tx = db.transaction("keys", "readwrite");
+        tx.objectStore("keys").put(key, "hmac");
+        tx.oncomplete = resolve;
+        tx.onerror = function() { reject(tx.error); };
+    });
+}
+async function deriveKey(passphrase) {
+    const material = await crypto.subtle.importKey("raw", enc(passphrase), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits(
+        { name: "PBKDF2", salt: enc("svrs-token-v1"), iterations: 200000, hash: "SHA-256" }, material, 256);
+    return crypto.subtle.importKey("raw", bits, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+}
+// Token from an IC number. Returns "" if the IC is not a valid 12-digit number.
+async function makeToken(ic) {
+    const digits = (ic || "").replace(/\D/g, "");
+    if (digits.length !== 12 || !hmacKey) return "";
+    return toHex(await crypto.subtle.sign("HMAC", hmacKey, enc(digits)));
+}
+// Short code to compare phones: the same passphrase gives the same code
+async function showKeyCode() {
+    if (!hmacKey) return;
+    const sig = await crypto.subtle.sign("HMAC", hmacKey, enc("svrs-check"));
+    keyCode.textContent = "Key check code: " + toHex(sig).slice(0, 6).toUpperCase();
 }
 
 // =====================================
@@ -241,9 +314,8 @@ function resetOCR() {
     imageVersion++;
     readTextBtn.hidden = true;
     progressBar.hidden = true;
-    recognizedText.textContent = "";
     nameInput.value = "";
-    icInput.value = "";
+    icInfo.textContent = "";
     currentHash = "";
     currentName = "";
     selectedVisitId = null;
@@ -348,7 +420,8 @@ manualBtn.addEventListener("click", function() {
     stopCamera();
     clearPreview();
     ocrResult.hidden = false;
-    message.textContent = "Type the visitor's name (and IC number if you have it), then tap Continue.";
+    icInfo.textContent = "No IC read. The visit will be matched by name.";
+    message.textContent = "Type the visitor's name, then tap Continue.";
 });
 
 // =====================================
@@ -423,14 +496,17 @@ async function runOCR() {
         const result = await w.recognize(prepareImage(preview));
         if (currentVersion !== imageVersion) return;
         const text = (result.data.text || "").trim();
-        recognizedText.textContent = text || "No readable text detected.";
         const f = extractFields(text);
+        currentHash = await makeToken(f.ic);     // token only; the IC number is dropped now
+        if (currentVersion !== imageVersion) return;
         nameInput.value = f.name;
-        icInput.value = f.ic;
+        icInfo.textContent = currentHash
+            ? "IC read OK: ******-**-" + f.ic.slice(-4) + " (not saved). Wrong? Scan again."
+            : "IC number not read clearly. Scan again, or continue and match by name.";
         ocrResult.hidden = false;
         if (!text) message.textContent = "No text found. Try a clearer photo, or type the name below.";
-        else if (f.name && f.ic) message.textContent = "Done! Check the name and IC number, then tap Continue.";
-        else message.textContent = "Some details were not found. Please type them in, then tap Continue.";
+        else if (f.name && currentHash) message.textContent = "Done! Check the name and IC number, then tap Continue.";
+        else message.textContent = "Some details were not found. Check the name, then tap Continue.";
     } catch (error) {
         console.error("OCR error:", error);
         if (currentVersion === imageVersion) message.textContent = "OCR failed: " + error.message + " You can type the details instead.";
@@ -451,15 +527,12 @@ continueBtn.addEventListener("click", async function() {
     if (!name) { message.textContent = "Please enter the visitor's name."; return; }
 
     currentName = name;
-    currentHash = await hashIC(icInput.value);
-    icInput.value = "";   // the IC number is not kept after this point
 
-    // Find active visits (not checked out yet)
+    // Find active visits (not checked out yet): token first, then name as backup.
+    // The guard always confirms the visit, so a wrong name match is harmless.
     const active = loadVisits().filter(v => !v.outAt);
-    let matches;
-    if (currentHash) {
-        matches = active.filter(v => v.idHash === currentHash);
-    } else {
+    let matches = currentHash ? active.filter(v => v.token === currentHash) : [];
+    if (!matches.length) {
         matches = active.filter(v => v.name.toLowerCase() === name.toLowerCase());
     }
 
@@ -512,7 +585,7 @@ confirmInBtn.addEventListener("click", function() {
         name: currentName,
         purpose: purposeInput.value.trim(),
         car: carInput.value.trim().toUpperCase(),
-        idHash: currentHash,
+        token: currentHash,
         inAt: new Date().toISOString(),   // automatic date and time
         outAt: null
     });
@@ -558,6 +631,13 @@ nextBtn.addEventListener("click", function() {
 // =====================================
 // 11. VISITOR RECORDS
 // =====================================
+function todayStr() { return localDay(new Date().toISOString()); }
+
+todayBtn.addEventListener("click", function() {
+    dateFilter.value = todayStr();
+    renderRecords();
+});
+
 function renderRecords() {
     const q = searchInput.value.trim().toLowerCase();
     const day = dateFilter.value;
@@ -565,7 +645,7 @@ function renderRecords() {
 
     const list = loadVisits()
         .filter(v => !q || [v.name, v.car, v.purpose].some(t => (t || "").toLowerCase().includes(q)))
-        .filter(v => !day || localDay(v.inAt) === day)
+        .filter(v => status === "in" || !day || localDay(v.inAt) === day)
         .filter(v => !status || (status === "in" ? !v.outAt : !!v.outAt))
         .sort((a, b) => b.inAt.localeCompare(a.inAt));
 
@@ -576,7 +656,10 @@ function renderRecords() {
         div.innerHTML = '<div class="info">' + visitSummary(v) + "</div>";
         recordList.appendChild(div);
     });
-    countInfo.textContent = list.length + " record(s) shown";
+    const when = status === "in" ? "still inside, all dates"
+        : day ? (day === todayStr() ? "today" : day.split("-").reverse().join("/"))
+        : "all dates";
+    countInfo.textContent = list.length + " visitor(s) - " + when;
     emptyState.hidden = list.length > 0;
 }
 [searchInput, dateFilter, statusFilter].forEach(el => {
@@ -589,12 +672,59 @@ goRecordsBtn.addEventListener("click", function() {
     clearPreview();
     scanPage.hidden = true;
     recordsPage.hidden = false;
+    dateFilter.value = todayStr();   // always open on today's visitors
+    searchInput.value = "";
+    statusFilter.value = "";
     renderRecords();
 });
 backRecordsBtn.addEventListener("click", function() {
     recordsPage.hidden = true;
     scanPage.hidden = false;
     message.textContent = "";
+});
+
+// =====================================
+// 11B. EXPORT TO EXCEL (.xlsx)
+// =====================================
+exportBtn.addEventListener("click", function() {
+    exportMsg.textContent = "";
+    if (typeof XLSX === "undefined") {
+        exportMsg.textContent = "Excel library did not load. Check the internet and refresh.";
+        return;
+    }
+    const from = exportFrom.value, to = exportTo.value;
+    if (from && to && from > to) {
+        exportMsg.textContent = "The 'From' date must be before the 'To' date.";
+        return;
+    }
+
+    const list = loadVisits()
+        .filter(v => (!from || localDay(v.inAt) >= from) && (!to || localDay(v.inAt) <= to))
+        .sort((a, b) => a.inAt.localeCompare(b.inAt));
+
+    if (!list.length) {
+        exportMsg.textContent = "No visitors found in that date range.";
+        return;
+    }
+
+    const rows = [["No.", "Visitor Name", "Purpose of Visit", "Car Number",
+                   "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Status"]];
+    list.forEach(function(v, i) {
+        rows.push([i + 1, v.name, v.purpose || "", v.car || "",
+                   fmtDate(v.inAt), fmtTime(v.inAt),
+                   v.outAt ? fmtDate(v.outAt) : "", v.outAt ? fmtTime(v.outAt) : "",
+                   v.outAt ? "Checked Out" : "Checked In"]);
+    });
+
+    const sheet = XLSX.utils.aoa_to_sheet(rows);
+    sheet["!cols"] = [{ wch: 5 }, { wch: 28 }, { wch: 26 }, { wch: 14 },
+                      { wch: 14 }, { wch: 13 }, { wch: 15 }, { wch: 14 }, { wch: 13 }];
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, sheet, "Visitors");
+
+    const label = (from || to) ? (from || "start") + "_to_" + (to || "latest") : "all";
+    XLSX.writeFile(book, "SVRS_Visitors_" + label + ".xlsx");
+    exportMsg.textContent = list.length + " visitor(s) exported.";
 });
 
 // =====================================
@@ -606,9 +736,42 @@ window.addEventListener("pagehide", function() {
     if (worker) worker.terminate();
 });
 
-scanPage.hidden = false;
-recordsPage.hidden = true;
-console.log("SVRS Phase 4 (simple fields) initialized.");
+saveKeyBtn.addEventListener("click", async function() {
+    const a = passInput.value, b = passConfirm.value;
+    if (a.length < 12) { setupMsg.textContent = "The passphrase must be at least 12 characters."; return; }
+    if (a !== b) { setupMsg.textContent = "The two passphrases do not match."; return; }
+    saveKeyBtn.disabled = true;
+    setupMsg.textContent = "Saving...";
+    try {
+        hmacKey = await deriveKey(a);
+        await storeKey(hmacKey);
+        passInput.value = "";
+        passConfirm.value = "";
+        await showKeyCode();
+        setupPage.hidden = true;
+        scanPage.hidden = false;
+    } catch (e) {
+        console.error(e);
+        setupMsg.textContent = "Setup failed: " + e.message;
+    } finally {
+        saveKeyBtn.disabled = false;
+    }
+});
+
+async function init() {
+    recordsPage.hidden = true;
+    if (!window.crypto || !crypto.subtle || !window.indexedDB) {
+        // No secure context: SVRS still works, matching by name only
+        scanPage.hidden = false;
+        message.textContent = "Secure matching is not available here (HTTPS needed). Matching by name only.";
+        return;
+    }
+    hmacKey = await loadKey();
+    if (hmacKey) { await showKeyCode(); scanPage.hidden = false; }
+    else setupPage.hidden = false;
+}
+init();
+console.log("SVRS Phase 4 (keyed token) initialized.");
 </script>
 </body>
 </html>
