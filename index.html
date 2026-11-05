@@ -23,6 +23,17 @@ video, #preview { display: block; width: 100%; max-height: 380px; object-fit: co
 .camwrap video { margin: 0; max-height: 70vh; border-radius: 0; background: #000; }
 #frameGuide { position: absolute; border: 3px solid #fff; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); pointer-events: none; }
 .camHint { position: absolute; left: 0; right: 0; bottom: 8px; color: #fff; font-size: 13px; text-shadow: 0 1px 3px #000; pointer-events: none; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.modal-card { background: white; border-radius: 20px; padding: 20px; width: 100%; max-width: 440px; max-height: 90vh; overflow: auto; text-align: left; }
+.modal-top { display: flex; justify-content: space-between; align-items: center; }
+.link-btn { width: auto; margin: 0; padding: 6px 4px; background: transparent; color: #2b7fc0; font-weight: bold; font-size: 16px; }
+.cancel-btn { color: #66776d; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chip { width: auto; margin: 0; padding: 12px 18px; background: #fffafe; color: #253b32; border: 1px solid #cfc6d0; border-radius: 12px; font-size: 16px; }
+.chip.active { background: #4b6e7e; color: white; border-color: #4b6e7e; }
+.daterow { display: flex; gap: 10px; margin-top: 8px; }
+.daterow > div { flex: 1; }
+.warn { color: #b45309; font-weight: bold; font-size: 13px; }
 #message { color: #28664a; margin-top: 20px; overflow-wrap: anywhere; line-height: 1.5; font-weight: bold; }
 #progressBar { width: 100%; height: 8px; margin-top: 12px; border-radius: 8px; overflow: hidden; background: #e5eee8; }
 #progressFill { height: 100%; width: 0; background: #28664a; transition: width 0.2s; }
@@ -134,15 +145,8 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
     <button id="backRecordsBtn" class="back-btn" type="button">&larr; Back to Scanner</button>
     <h2>Visitor Records</h2>
 
-    <div class="panel">
-        <h3>Export to Excel</h3>
-        <label for="exportFrom">From date (leave both empty to export everything)</label>
-        <input id="exportFrom" type="date">
-        <label for="exportTo">To date</label>
-        <input id="exportTo" type="date">
-        <button id="exportBtn" type="button">Export to Excel</button>
-        <p id="exportMsg" class="small"></p>
-    </div>
+    <button id="exportOpenBtn" type="button">Export to Excel</button>
+    <p id="exportDone" class="small"></p>
 
     <h3>Visitor list</h3>
     <input id="searchInput" type="search" placeholder="Search by name, car number or purpose">
@@ -163,6 +167,43 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
 
 <footer>SVRS | Internship Project<br><span id="keyCode"></span><br>Version: native-photo-1</footer>
 </main>
+
+<!-- EXPORT POPUP -->
+<div id="exportModal" class="modal" role="dialog" aria-modal="true" aria-label="Export to Excel" hidden>
+    <div class="modal-card">
+        <div class="modal-top">
+            <button id="exportCancelBtn" class="link-btn cancel-btn" type="button">Cancel</button>
+            <button id="exportBtn" class="link-btn" type="button">Export</button>
+        </div>
+        <h3>DATE RANGE</h3>
+        <div class="chips" id="chips">
+            <button class="chip" type="button" data-range="day">Day</button>
+            <button class="chip" type="button" data-range="week">Week</button>
+            <button class="chip" type="button" data-range="month">Month</button>
+            <button class="chip" type="button" data-range="year">Year</button>
+            <button class="chip" type="button" data-range="all">All</button>
+            <button class="chip" type="button" data-range="range">Date Range</button>
+        </div>
+        <div class="daterow">
+            <div><label class="small" for="exportFrom">Start</label><input id="exportFrom" type="date"></div>
+            <div><label class="small" for="exportTo">End</label><input id="exportTo" type="date"></div>
+        </div>
+        <p id="exportMsg" class="small"></p>
+    </div>
+</div>
+
+<!-- MANUAL CHECK-OUT POPUP -->
+<div id="outModal" class="modal" role="dialog" aria-modal="true" aria-label="Manual check-out" hidden>
+    <div class="modal-card">
+        <h3>Manual check-out</h3>
+        <div id="outModalInfo" class="info"></div>
+        <label class="small" for="outTimeInput">Check-out date and time (change it if the visitor left earlier)</label>
+        <input id="outTimeInput" type="datetime-local">
+        <p id="outModalMsg" class="warn"></p>
+        <button id="confirmManualOutBtn" type="button">Confirm Check-Out</button>
+        <button id="cancelManualOutBtn" class="secondary" type="button">Cancel</button>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -192,6 +233,10 @@ const inDate = $("inDate"), inTime = $("inTime"), confirmInBtn = $("confirmInBtn
 const successBox = $("successBox"), successText = $("successText"), nextBtn = $("nextBtn");
 const searchInput = $("searchInput"), dateFilter = $("dateFilter"), statusFilter = $("statusFilter");
 const exportFrom = $("exportFrom"), exportTo = $("exportTo"), exportBtn = $("exportBtn"), exportMsg = $("exportMsg");
+const exportOpenBtn = $("exportOpenBtn"), exportDone = $("exportDone"), exportModal = $("exportModal");
+const exportCancelBtn = $("exportCancelBtn");
+const outModal = $("outModal"), outModalInfo = $("outModalInfo"), outTimeInput = $("outTimeInput");
+const outModalMsg = $("outModalMsg"), confirmManualOutBtn = $("confirmManualOutBtn"), cancelManualOutBtn = $("cancelManualOutBtn");
 const todayBtn = $("todayBtn"), recordList = $("recordList"), countInfo = $("countInfo"), emptyState = $("emptyState");
 
 // =====================================
@@ -242,7 +287,7 @@ function visitSummary(v) {
         "Purpose: " + esc(v.purpose || "-") + "<br>" +
         "Car number: " + esc(v.car || "-") + "<br>" +
         "Check-In: " + fmtDate(v.inAt) + " " + fmtTime(v.inAt) + "<br>" +
-        "Check-Out: " + (v.outAt ? fmtDate(v.outAt) + " " + fmtTime(v.outAt) : "Not yet") + "<br>" +
+        "Check-Out: " + (v.outAt ? fmtDate(v.outAt) + " " + fmtTime(v.outAt) + (v.manualOut ? " (manual)" : "") : "Not yet") + "<br>" +
         "Status: " + badge(v);
 }
 
@@ -528,7 +573,8 @@ function showMatches(matches) {
     matches.forEach(function(v) {
         const div = document.createElement("div");
         div.className = "record";
-        div.innerHTML = '<div class="info">' + visitSummary(v) + "</div>";
+        div.innerHTML = '<div class="info">' + visitSummary(v) + "</div>" +
+            (localDay(v.inAt) !== todayStr() ? '<p class="warn">Started on an earlier day. Was the check-out forgotten? If this visitor is arriving again, choose "None of these", then check this old visit out from the records page.</p>' : "");
         const btn = document.createElement("button");
         btn.type = "button";
         btn.textContent = "This is the right visit";
@@ -635,6 +681,17 @@ function renderRecords() {
         const div = document.createElement("div");
         div.className = "record";
         div.innerHTML = '<div class="info">' + visitSummary(v) + "</div>";
+        if (!v.outAt) {
+            if (localDay(v.inAt) !== todayStr()) {
+                div.insertAdjacentHTML("beforeend", '<p class="warn">Still inside since ' + fmtDate(v.inAt) + '. Forgot to check out?</p>');
+            }
+            const outBtn = document.createElement("button");
+            outBtn.type = "button";
+            outBtn.className = "secondary";
+            outBtn.textContent = "Manual Check-Out";
+            outBtn.addEventListener("click", function() { openManualOut(v.id); });
+            div.appendChild(outBtn);
+        }
         recordList.appendChild(div);
     });
     const when = status === "in" ? "still inside, all dates"
@@ -664,8 +721,84 @@ backRecordsBtn.addEventListener("click", function() {
 });
 
 // =====================================
+// 11A. MANUAL CHECK-OUT (for visitors the guard forgot to check out)
+// =====================================
+let manualOutId = null;
+function localInput(date) {   // yyyy-mm-ddThh:mm in local time, for the date-time box
+    return ymd(date) + "T" + pad2(date.getHours()) + ":" + pad2(date.getMinutes());
+}
+function openManualOut(id) {
+    const v = loadVisits().find(x => x.id === id);
+    if (!v || v.outAt) return;
+    manualOutId = id;
+    outModalInfo.innerHTML = visitSummary(v);
+    outTimeInput.min = localInput(new Date(v.inAt));
+    outTimeInput.max = localInput(new Date());
+    outTimeInput.value = localInput(new Date());
+    outModalMsg.textContent = "";
+    outModal.hidden = false;
+}
+cancelManualOutBtn.addEventListener("click", function() { outModal.hidden = true; });
+outModal.addEventListener("click", function(e) { if (e.target === outModal) outModal.hidden = true; });
+confirmManualOutBtn.addEventListener("click", function() {
+    const visits = loadVisits();
+    const v = visits.find(x => x.id === manualOutId);
+    if (!v || v.outAt) { outModalMsg.textContent = "This visit is already checked out."; return; }
+    if (!outTimeInput.value) { outModalMsg.textContent = "Please choose the check-out date and time."; return; }
+    const out = new Date(outTimeInput.value);
+    if (out < new Date(v.inAt)) { outModalMsg.textContent = "Check-out cannot be before check-in."; return; }
+    if (out > new Date(Date.now() + 60000)) { outModalMsg.textContent = "Check-out cannot be in the future."; return; }
+    v.outAt = out.toISOString();
+    v.manualOut = true;   // marked so records show it was entered by hand
+    saveVisits(visits);
+    outModal.hidden = true;
+    renderRecords();
+});
+
+// =====================================
 // 11B. EXPORT TO EXCEL (.xlsx)
 // =====================================
+function pad2(n) { return String(n).padStart(2, "0"); }
+function ymd(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+
+function pickRange(kind) {
+    const now = new Date();
+    let from = "", to = ymd(now);
+    if (kind === "day") from = to;
+    else if (kind === "week") {
+        const start = new Date(now);
+        start.setDate(now.getDate() - ((now.getDay() + 6) % 7));   // Monday of this week
+        from = ymd(start);
+    }
+    else if (kind === "month") from = now.getFullYear() + "-" + pad2(now.getMonth() + 1) + "-01";
+    else if (kind === "year") from = now.getFullYear() + "-01-01";
+    else if (kind === "all") { from = ""; to = ""; }
+    else { from = exportFrom.value || to; to = exportTo.value || to; }   // custom range
+    exportFrom.value = from;
+    exportTo.value = to;
+    document.querySelectorAll("#chips .chip").forEach(function(c) {
+        c.classList.toggle("active", c.dataset.range === kind);
+    });
+    exportMsg.textContent = "";
+}
+document.querySelectorAll("#chips .chip").forEach(function(c) {
+    c.addEventListener("click", function() { pickRange(c.dataset.range); });
+});
+[exportFrom, exportTo].forEach(function(el) {
+    el.addEventListener("change", function() {   // typing a date = custom range
+        document.querySelectorAll("#chips .chip").forEach(function(c) {
+            c.classList.toggle("active", c.dataset.range === "range");
+        });
+    });
+});
+exportOpenBtn.addEventListener("click", function() {
+    exportDone.textContent = "";
+    pickRange("day");
+    exportModal.hidden = false;
+});
+exportCancelBtn.addEventListener("click", function() { exportModal.hidden = true; });
+exportModal.addEventListener("click", function(e) { if (e.target === exportModal) exportModal.hidden = true; });
+
 exportBtn.addEventListener("click", function() {
     exportMsg.textContent = "";
     if (typeof XLSX === "undefined") {
@@ -688,23 +821,24 @@ exportBtn.addEventListener("click", function() {
     }
 
     const rows = [["No.", "Visitor Name", "Purpose of Visit", "Car Number",
-                   "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Status"]];
+                   "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Status", "Manual Check-Out"]];
     list.forEach(function(v, i) {
         rows.push([i + 1, v.name, v.purpose || "", v.car || "",
                    fmtDate(v.inAt), fmtTime(v.inAt),
                    v.outAt ? fmtDate(v.outAt) : "", v.outAt ? fmtTime(v.outAt) : "",
-                   v.outAt ? "Checked Out" : "Checked In"]);
+                   v.outAt ? "Checked Out" : "Checked In", v.manualOut ? "Yes" : ""]);
     });
 
     const sheet = XLSX.utils.aoa_to_sheet(rows);
     sheet["!cols"] = [{ wch: 5 }, { wch: 28 }, { wch: 26 }, { wch: 14 },
-                      { wch: 14 }, { wch: 13 }, { wch: 15 }, { wch: 14 }, { wch: 13 }];
+                      { wch: 14 }, { wch: 13 }, { wch: 15 }, { wch: 14 }, { wch: 13 }, { wch: 16 }];
     const book = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(book, sheet, "Visitors");
 
     const label = (from || to) ? (from || "start") + "_to_" + (to || "latest") : "all";
     XLSX.writeFile(book, "SVRS_Visitors_" + label + ".xlsx");
-    exportMsg.textContent = list.length + " visitor(s) exported.";
+    exportModal.hidden = true;
+    exportDone.textContent = list.length + " visitor(s) exported.";
 });
 
 // =====================================
