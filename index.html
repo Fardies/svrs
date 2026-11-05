@@ -34,6 +34,26 @@ video, #preview { display: block; width: 100%; max-height: 380px; object-fit: co
 .daterow { display: flex; gap: 10px; margin-top: 8px; }
 .daterow > div { flex: 1; }
 .warn { color: #b45309; font-weight: bold; font-size: 13px; }
+input[type="date"], input[type="datetime-local"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; text-align: left; }
+.left { text-align: left; }
+.page-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; }
+.page-head .back-btn { width: auto; margin: 0; padding: 8px 0; }
+.nav-btn.solid { background: #28664a; color: white; }
+#recordsPage h2 { margin: 0 0 4px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.stat { background: #f4f7f5; border-radius: 12px; padding: 12px 6px; }
+.stat b { display: block; font-size: 22px; color: #28664a; }
+.stat span { font-size: 12px; color: #66776d; }
+.filters { display: grid; gap: 10px; margin-top: 18px; }
+.filters input, .filters select { margin-top: 0; height: 48px; }
+.datebar { display: flex; gap: 10px; }
+.datebar input { flex: 1; }
+.datebar button { width: auto; margin: 0; padding: 0 18px; }
+.rec { background: #f4f7f5; border-radius: 12px; padding: 14px; margin-top: 10px; text-align: left; }
+.rec-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 16px; }
+.rec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; font-size: 14px; }
+.rec-grid span { display: block; font-size: 12px; color: #66776d; margin-bottom: 2px; }
+.rec button { padding: 11px; font-size: 14px; margin-top: 12px; }
 #message { color: #28664a; margin-top: 20px; overflow-wrap: anywhere; line-height: 1.5; font-weight: bold; }
 #progressBar { width: 100%; height: 8px; margin-top: 12px; border-radius: 8px; overflow: hidden; background: #e5eee8; }
 #progressFill { height: 100%; width: 0; background: #28664a; transition: width 0.2s; }
@@ -142,30 +162,43 @@ footer { margin-top: 35px; color: #88978d; font-size: 13px; }
 
 <!-- RECORDS PAGE -->
 <section id="recordsPage" class="card" hidden>
-    <button id="backRecordsBtn" class="back-btn" type="button">&larr; Back to Scanner</button>
-    <h2>Visitor Records</h2>
+    <div class="page-head">
+        <button id="backRecordsBtn" class="back-btn" type="button">&larr; Back to Scanner</button>
+        <button id="exportOpenBtn" class="nav-btn solid" type="button">Export to Excel</button>
+    </div>
 
-    <button id="exportOpenBtn" type="button">Export to Excel</button>
+    <h2 class="left">Visitor Records</h2>
+    <p class="left small">View and search visitor history.</p>
+
+    <div class="stats">
+        <div class="stat"><b id="statShown">0</b><span>Shown</span></div>
+        <div class="stat"><b id="statIn">0</b><span>Inside</span></div>
+        <div class="stat"><b id="statOut">0</b><span>Checked out</span></div>
+    </div>
     <p id="exportDone" class="small"></p>
 
-    <h3>Visitor list</h3>
-    <input id="searchInput" type="search" placeholder="Search by name, car number or purpose">
-    <input id="dateFilter" type="date" aria-label="Choose date">
-    <button id="todayBtn" class="secondary" type="button">Show Today</button>
-    <select id="statusFilter" aria-label="Filter by status">
-        <option value="">All statuses</option>
-        <option value="in">Still inside (any date)</option>
-        <option value="out">Completed (Checked Out)</option>
-    </select>
-    <p id="countInfo" class="small"></p>
+    <div class="filters">
+        <input id="searchInput" type="search" placeholder="Search name, car number or purpose">
+        <div class="datebar">
+            <input id="dateFilter" type="date" aria-label="Choose date">
+            <button id="todayBtn" class="secondary" type="button">Today</button>
+        </div>
+        <select id="statusFilter" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="in">Still inside (any date)</option>
+            <option value="out">Completed (Checked Out)</option>
+        </select>
+    </div>
+
+    <p id="countInfo" class="small left"></p>
     <div id="recordList"></div>
     <div id="emptyState" class="empty-state" hidden>
         <p>No visitors found.</p>
-        <small>Excel export will be added later.</small>
+        <small id="emptyHint"></small>
     </div>
 </section>
 
-<footer>SVRS | Internship Project<br><span id="keyCode"></span><br>Version: native-photo-1</footer>
+<footer>SVRS | Internship Project<br><span id="keyCode"></span><br>Version: records-ui-1</footer>
 </main>
 
 <!-- EXPORT POPUP -->
@@ -237,6 +270,7 @@ const exportOpenBtn = $("exportOpenBtn"), exportDone = $("exportDone"), exportMo
 const exportCancelBtn = $("exportCancelBtn");
 const outModal = $("outModal"), outModalInfo = $("outModalInfo"), outTimeInput = $("outTimeInput");
 const outModalMsg = $("outModalMsg"), confirmManualOutBtn = $("confirmManualOutBtn"), cancelManualOutBtn = $("cancelManualOutBtn");
+const statShown = $("statShown"), statIn = $("statIn"), statOut = $("statOut"), emptyHint = $("emptyHint");
 const todayBtn = $("todayBtn"), recordList = $("recordList"), countInfo = $("countInfo"), emptyState = $("emptyState");
 
 // =====================================
@@ -665,40 +699,61 @@ todayBtn.addEventListener("click", function() {
     renderRecords();
 });
 
+function recordCard(v) {
+    const div = document.createElement("div");
+    div.className = "rec";
+    div.innerHTML =
+        '<div class="rec-head"><b>' + esc(v.name) + "</b>" + badge(v) + "</div>" +
+        '<div class="rec-grid">' +
+        "<div><span>Purpose</span>" + esc(v.purpose || "-") + "</div>" +
+        "<div><span>Car number</span>" + esc(v.car || "-") + "</div>" +
+        "<div><span>Check-in</span>" + fmtDate(v.inAt) + "<br>" + fmtTime(v.inAt) + "</div>" +
+        "<div><span>Check-out</span>" +
+            (v.outAt ? fmtDate(v.outAt) + "<br>" + fmtTime(v.outAt) + (v.manualOut ? " (manual)" : "") : "Not yet") + "</div>" +
+        "</div>";
+    if (!v.outAt) {
+        if (localDay(v.inAt) !== todayStr()) {
+            div.insertAdjacentHTML("beforeend", '<p class="warn">Still inside since ' + fmtDate(v.inAt) + ". Forgot to check out?</p>");
+        }
+        const outBtn = document.createElement("button");
+        outBtn.type = "button";
+        outBtn.className = "secondary";
+        outBtn.textContent = "Manual Check-Out";
+        outBtn.addEventListener("click", function() { openManualOut(v.id); });
+        div.appendChild(outBtn);
+    }
+    return div;
+}
+
 function renderRecords() {
     const q = searchInput.value.trim().toLowerCase();
     const day = dateFilter.value;
     const status = statusFilter.value;
 
-    const list = loadVisits()
+    const all = loadVisits();
+    const list = all
         .filter(v => !q || [v.name, v.car, v.purpose].some(t => (t || "").toLowerCase().includes(q)))
         .filter(v => status === "in" || !day || localDay(v.inAt) === day)
         .filter(v => !status || (status === "in" ? !v.outAt : !!v.outAt))
         .sort((a, b) => b.inAt.localeCompare(a.inAt));
 
     recordList.innerHTML = "";
-    list.forEach(function(v) {
-        const div = document.createElement("div");
-        div.className = "record";
-        div.innerHTML = '<div class="info">' + visitSummary(v) + "</div>";
-        if (!v.outAt) {
-            if (localDay(v.inAt) !== todayStr()) {
-                div.insertAdjacentHTML("beforeend", '<p class="warn">Still inside since ' + fmtDate(v.inAt) + '. Forgot to check out?</p>');
-            }
-            const outBtn = document.createElement("button");
-            outBtn.type = "button";
-            outBtn.className = "secondary";
-            outBtn.textContent = "Manual Check-Out";
-            outBtn.addEventListener("click", function() { openManualOut(v.id); });
-            div.appendChild(outBtn);
-        }
-        recordList.appendChild(div);
-    });
+    list.forEach(v => recordList.appendChild(recordCard(v)));
+
+    const inside = list.filter(v => !v.outAt).length;
+    statShown.textContent = list.length;
+    statIn.textContent = inside;
+    statOut.textContent = list.length - inside;
+
     const when = status === "in" ? "still inside, all dates"
         : day ? (day === todayStr() ? "today" : day.split("-").reverse().join("/"))
         : "all dates";
-    countInfo.textContent = list.length + " visitor(s) - " + when;
+    countInfo.textContent = "Showing " + when;
+
     emptyState.hidden = list.length > 0;
+    emptyHint.textContent = all.length === 0
+        ? "Nothing is saved in this browser yet. Visits are saved per phone and per browser, and private tabs erase them when closed."
+        : all.length + " visitor(s) are saved on other dates. Change the date or tap Today.";
 }
 [searchInput, dateFilter, statusFilter].forEach(el => {
     el.addEventListener("input", renderRecords);
